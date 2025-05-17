@@ -1,0 +1,7 @@
+./consumers/resultats/*
+./consumers/jars/*
+venv/
+.env
+*/checkpoints/
+*/resultats/
+/checkpoints
