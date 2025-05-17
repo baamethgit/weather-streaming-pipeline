@@ -5,7 +5,7 @@ from pyspark.sql.functions import to_timestamp
 
 from pyspark.sql.functions import window, avg
 
-# 1. Démarrer SparkSession avec le connecteur Kafka
+# connecteur Kafka
 spark = SparkSession.builder \
     .appName("KafkaSparkStructuredConsumer") \
     .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0") \
@@ -13,7 +13,7 @@ spark = SparkSession.builder \
 
 spark.sparkContext.setLogLevel("WARN")
 
-# 2. Lire le topic Kafka
+# lire le topic Kafka
 df_raw = spark.readStream \
     .format("kafka") \
     .option("kafka.bootstrap.servers", "localhost:9092") \
