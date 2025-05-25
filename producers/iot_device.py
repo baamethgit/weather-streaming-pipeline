@@ -24,4 +24,4 @@ while True:
     data = simulate_sensor()
     producer.send(TOPIC, data)
     print(f"[Capteur] Envoyé : {data}")
-    time.sleep(10)  # toutes les 10 secondes
+    time.sleep(60)  # toutes les 10 secondes

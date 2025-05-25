@@ -20,7 +20,7 @@ producer = KafkaProducer(
 
 
 def fetch_and_send_weather():
-    url = f"https://api.openweathermap.org/data/3.0/onecall?lat={LAT}&lon={LON}&exclude=minutely,hourly,daily,alerts&appid={API_KEY}&units=metric"
+    url = f"https://api.openweathermap.org/data/3.0/onecall?lat={LAT}&lon={LON}&exclude=minutely,hourly,daily&appid={API_KEY}&units=metric"
     try:
         response = requests.get(url)
         data = response.json()
@@ -36,8 +36,9 @@ def fetch_and_send_weather():
             "pressure": current.get("pressure"),
             "feels_like": current.get("feels_like"),
             "uvi": current.get("uvi"), #Indice UV
-            "weather_main": current.get("weather.main"), # Description textuelle des conditions
-            "weather_description": current.get("weather.description"), 
+           "weather_main": current.get("weather")[0].get("main") if current.get("weather") else None,
+            "weather_description": current.get("weather")[0].get("description") if current.get("weather") else None,
+
         }
 
         producer.send(KAFKA_TOPIC, value=payload)
@@ -47,7 +48,7 @@ def fetch_and_send_weather():
         print(100*"#")
         for alert in data.get("alerts", []):
             alert_payload = {
-                "datetime": datetime.datetime.fromtimestamp().isoformat(),
+                "datetime": datetime.datetime.fromtimestamp(alert.get("start")).isoformat(),
                 "event": alert.get("event"),
                 "start": alert.get("start"),
                 "end": alert.get("end"),
@@ -65,7 +66,7 @@ def fetch_and_send_weather():
     except Exception as e:
         print(f"Error fetching/sending data: {e}")
 
-schedule.every(10).minutes.do(fetch_and_send_weather)
+schedule.every(1).minutes.do(fetch_and_send_weather)
 
 print("Weather ingestion started")
 fetch_and_send_weather()  # premier appel immédiat

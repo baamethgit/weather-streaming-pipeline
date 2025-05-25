@@ -34,10 +34,10 @@ api_schema = StructType() \
 
 # Schéma pour les capteurs IoT locaux (structure simplifiée)
 local_schema = StructType() \
-    .add("datetime", StringType()) \
     .add("temperature", DoubleType()) \
     .add("humidity", DoubleType()) \
-    .add("pressure", DoubleType())
+    .add("pressure", DoubleType()) \
+    .add("timestamp", StringType())
 
 # 3. Lire depuis les deux topics Kafka
 # Lecture du flux API météo
@@ -77,7 +77,7 @@ df_api = df_api_raw.selectExpr("CAST(value AS STRING)", "timestamp as kafka_time
 df_local = df_local_raw.selectExpr("CAST(value AS STRING)", "timestamp as kafka_timestamp") \
     .select(from_json(col("value"), local_schema).alias("data"), col("kafka_timestamp")) \
     .select(
-        to_timestamp(col("data.datetime")).alias("event_time"),
+        to_timestamp(col("data.timestamp")).alias("event_time"),
         col("data.temperature"),
         col("data.humidity"),
         col("data.pressure"),
@@ -103,7 +103,7 @@ df_local_cleaned = df_local \
 
 # 6. Extraction des données par tranches de 10 minutes
 df_api_10min = df_api_cleaned \
-    .withWatermark("event_time", "5 minutes") \
+    .withWatermark("event_time", "15 minutes") \
     .groupBy(window(col("event_time"), "10 minutes")) \
     .agg(
         avg("temperature").alias("temperature"),
