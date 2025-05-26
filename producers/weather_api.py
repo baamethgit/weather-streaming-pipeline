@@ -7,7 +7,8 @@ import datetime
 
 
 API_KEY = "baad5febfdfcbc8b2f1283e57a6f49d2"
-LAT, LON = 48.85, 2.35  # Paris
+# LAT, LON = 48.85, 2.35  # Paris
+LAT, LON = 14.7908, -16.9382  # Thies
 KAFKA_TOPIC = "weather-api"
 KAFKA_BROKER = "localhost:9092"
 KAFKA_TOPIC_ALERTS = "weather-alerts"
@@ -66,7 +67,7 @@ def fetch_and_send_weather():
     except Exception as e:
         print(f"Error fetching/sending data: {e}")
 
-schedule.every(1).minutes.do(fetch_and_send_weather)
+schedule.every(10).minutes.do(fetch_and_send_weather)
 
 print("Weather ingestion started")
 fetch_and_send_weather()  # premier appel immédiat

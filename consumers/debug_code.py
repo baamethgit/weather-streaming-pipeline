@@ -11,7 +11,7 @@ spark = SparkSession.builder \
     .config("spark.driver.memory", "2g") \
     .getOrCreate()
 
-spark.sparkContext.setLogLevel("WARN")
+# spark.sparkContext.setLogLevel("WARN")
 
 # schémas 
 
@@ -33,8 +33,6 @@ local_schema = StructType() \
     .add("humidity", DoubleType()) \
     .add("pressure", DoubleType()) \
     .add("timestamp", StringType())
-
-
 
 # Lecture du flux API météo
 df_api_raw = spark.readStream \
@@ -58,8 +56,8 @@ print("===== Configuration des flux Kafka terminée =====")
 
 
 # Parser les données JSON pour chaque source
-df_api = df_api_raw.selectExpr("CAST(value AS STRING)", "timestamp as kafka_timestamp") \
-    .select(from_json(col("value"), api_schema).alias("data"), col("kafka_timestamp"))
+df_api = df_api_raw.selectExpr("CAST(value AS STRING)", "timestamp") \
+    .select(from_json(col("value"), api_schema).alias("data"), col("timestamp"))
 
 df_api = df_api \
     .select(
@@ -77,8 +75,8 @@ df_api = df_api \
         lit("api").alias("source")
     )
 
-df_local = df_local_raw.selectExpr("CAST(value AS STRING)", "timestamp as kafka_timestamp") \
-    .select(from_json(col("value"), local_schema).alias("data"), col("kafka_timestamp"))
+df_local = df_local_raw.selectExpr("CAST(value AS STRING)", "timestamp") \
+    .select(from_json(col("value"), local_schema).alias("data"), col("timestamp"))
 
 df_local = df_local \
     .select(

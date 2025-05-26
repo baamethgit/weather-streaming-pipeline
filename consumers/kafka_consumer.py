@@ -20,7 +20,7 @@ spark.sparkContext.setLogLevel("WARN")
 # 2. Définir les schémas corrects pour les deux sources
 # Schéma complet pour l'API météo
 api_schema = StructType() \
-    .add("timestamp", LongType()) \
+    .add("timestamp", StringType()) \
     .add("datetime", StringType()) \
     .add("temperature", DoubleType()) \
     .add("humidity", DoubleType()) \
@@ -57,8 +57,8 @@ df_local_raw = spark.readStream \
     .load()
 
 # 4. Parser les données JSON pour chaque source
-df_api = df_api_raw.selectExpr("CAST(value AS STRING)", "timestamp as kafka_timestamp") \
-    .select(from_json(col("value"), api_schema).alias("data"), col("kafka_timestamp")) \
+df_api = df_api_raw.selectExpr("CAST(value AS STRING)", "timestamp") \
+    .select(from_json(col("value"), api_schema).alias("data"), col("timestamp")) \
     .select(
         col("data.timestamp"),
         to_timestamp(col("data.datetime")).alias("event_time"),
@@ -74,8 +74,8 @@ df_api = df_api_raw.selectExpr("CAST(value AS STRING)", "timestamp as kafka_time
         lit("api").alias("source")
     )
 
-df_local = df_local_raw.selectExpr("CAST(value AS STRING)", "timestamp as kafka_timestamp") \
-    .select(from_json(col("value"), local_schema).alias("data"), col("kafka_timestamp")) \
+df_local = df_local_raw.selectExpr("CAST(value AS STRING)", "timestamp") \
+    .select(from_json(col("value"), local_schema).alias("data"), col("timestamp")) \
     .select(
         to_timestamp(col("data.timestamp")).alias("event_time"),
         col("data.temperature"),
@@ -238,6 +238,7 @@ df_daily_avg = df_fused \
         col("avg_uvi")
     )
 
+
 # 11. Écriture des données fusionnées (10 minutes) au format CSV
 query_fused = df_fused.writeStream \
     .format("csv") \
@@ -269,7 +270,7 @@ query_daily = df_daily_avg.writeStream \
 query_monitor = df_fused.writeStream \
     .outputMode("append") \
     .format("console") \
-    .trigger(processingTime='30 seconds') \
+    .trigger(processingTime='5 minutes') \
     .option("truncate", False) \
     .start()
 
