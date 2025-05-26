@@ -7,7 +7,8 @@ import datetime
 
 
 API_KEY = "baad5febfdfcbc8b2f1283e57a6f49d2"
-LAT, LON = 48.85, 2.35  # Paris
+API_KEY_TST = "baad5febfdfcbc8b2f1283e57a6f49d2"
+LAT, LON = 14.7908, -16.9382  # Thies
 KAFKA_TOPIC = "weather-api"
 KAFKA_BROKER = "localhost:9092"
 KAFKA_TOPIC_ALERTS = "weather-alerts"
@@ -20,7 +21,7 @@ producer = KafkaProducer(
 
 
 def fetch_and_send_weather():
-    url = f"https://api.openweathermap.org/data/3.0/onecall?lat={LAT}&lon={LON}&exclude=minutely,hourly,daily,alerts&appid={API_KEY}&units=metric"
+    url = f"https://api.openweathermap.org/data/3.0/onecall?lat={LAT}&lon={LON}&exclude=minutely,hourly,daily,alerts&appid={API_KEY_TST}&units=metric"
     try:
         response = requests.get(url)
         data = response.json()
