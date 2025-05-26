@@ -1,67 +1,37 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, lead
-from pyspark.sql.window import Window
-from pyspark.ml.feature import VectorAssembler
-from pyspark.ml.regression import LinearRegression
-from pyspark.ml.evaluation import RegressionEvaluator
+from feature_engineering import build_feature_pipeline
+from pyspark.ml.regression import RandomForestRegressor
+from pyspark.ml import Pipeline, PipelineModel
 
-# 1. Démarrer la SparkSession (si ce n'est pas déjà fait)
+# 1. Démarrer SparkSession
 spark = SparkSession.builder \
-    .appName("WeatherModelTraining") \
+    .appName("ModelTraining") \
+    .master("local[*]") \
     .getOrCreate()
 
-# --- Supposons que tu as déjà df_fused (10min agrégées) ---
-# Pour exemple, on recrée df_fused ici (tu dois adapter cette partie à ton contexte) :
+# 2. Lire les données historiques fusionnées (10 minutes)
+df = spark.read.option("header", True).csv("./resultats/weather_fused_10min/")
 
-# df_fused = ... (ton DataFrame fusionné avec colonnes : interval_start, temperature, humidity, pressure, wind_speed, etc.)
+# 3. Nettoyage minimum et typage
+df = df.withColumn("temperature", df["temperature"].cast("double")) \
+       .withColumn("humidity", df["humidity"].cast("double")) \
+       .withColumn("pressure", df["pressure"].cast("double")) \
+       .withColumn("wind_speed", df["wind_speed"].cast("double")) \
+       .withColumn("wind_deg", df["wind_deg"].cast("double"))
 
-# --- Préparation des données pour la prédiction ---
+# 4. Appliquer le pipeline de feature engineering
+pipeline = build_feature_pipeline()
+df_transformed = pipeline.fit(df).transform(df)
 
-# Objectif : prédire la température moyenne 1 intervalle (10 min) dans le futur
-# On crée une colonne "target_temp" = temperature décalée d'un intervalle dans le futur
+# 5. Simuler un vecteur de sortie pour test (à remplacer par vraies moyennes futures)
+from pyspark.sql.functions import col
+df_final = df_transformed.withColumnRenamed("temperature", "label")
 
-window_spec = Window.orderBy("interval_start")
+# 6. Entraîner un modèle de régression (ex : température uniquement pour test)
+rf = RandomForestRegressor(featuresCol="features", labelCol="label")
+model = rf.fit(df_final)
 
-df_ml = df_fused \
-    .select(
-        col("interval_start"),
-        col("temperature"),
-        col("humidity"),
-        col("pressure"),
-        col("wind_speed"),
-        col("wind_deg"),
-        col("feels_like"),
-        col("uvi")
-    ) \
-    .withColumn("target_temp", lead("temperature", 1).over(window_spec)) \
-    .na.drop(subset=["target_temp"])  # On enlève les lignes où target est null (fin de série)
+# 7. Sauvegarder le modèle
+model.save("./modeles/rf_temperature_model")
 
-# 2. Assemblage des features en un vecteur
-feature_cols = ["temperature", "humidity", "pressure", "wind_speed", "wind_deg", "feels_like", "uvi"]
-assembler = VectorAssembler(inputCols=feature_cols, outputCol="features")
-
-df_ml_features = assembler.transform(df_ml).select("features", "target_temp")
-
-# 3. Split train/test
-train_data, test_data = df_ml_features.randomSplit([0.8, 0.2], seed=42)
-
-# 4. Création et entraînement du modèle de régression linéaire
-lr = LinearRegression(featuresCol="features", labelCol="target_temp")
-
-lr_model = lr.fit(train_data)
-
-# 5. Évaluation sur le jeu de test
-predictions = lr_model.transform(test_data)
-
-evaluator = RegressionEvaluator(labelCol="target_temp", predictionCol="prediction", metricName="rmse")
-rmse = evaluator.evaluate(predictions)
-
-print(f"Root Mean Squared Error (RMSE) on test data = {rmse}")
-
-# 6. Affichage des coefficients du modèle
-print("Coefficients:", lr_model.coefficients)
-print("Intercept:", lr_model.intercept)
-
-# 7. Optionnel : sauvegarder le modèle pour réutilisation
-lr_model.save("./models/weather_temp_lr_model")
-
+print("✅ Modèle entraîné et sauvegardé.")
