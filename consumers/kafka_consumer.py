@@ -10,11 +10,25 @@ from pyspark.sql.functions import col, from_json, to_timestamp, when, lit, coale
 from pyspark.sql.types import StructType, StringType, DoubleType, LongType
 
 # 1. Démarrer SparkSession avec le connecteur Kafka
-spark = SparkSession.builder \
-    .appName("WeatherDataFusionJob") \
-    .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0") \
-    .getOrCreate()
+# spark = SparkSession.builder \
+#     .appName("WeatherDataFusionJob") \
+#     .config("spark.jars.packages", 
+#             "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,"
+#             "org.apache.hadoop:hadoop-aws:3.3.4,"
+#             "com.amazonaws:aws-java-sdk-bundle:1.12.367") \
+#     .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
+#     .config("spark.hadoop.fs.s3a.aws.credentials.provider", 
+#             "com.amazonaws.auth.profile.ProfileCredentialsProvider") \
+#     .config("spark.hadoop.fs.s3a.profile.name", "comptePerso") \
+#     .config("spark.hadoop.fs.s3a.credentials.file", "C:/Users/DELL/.aws/credentials") \
+#     .getOrCreate()
 
+spark = SparkSession.builder \
+    .appName("WeatherAggregationPipeline") \
+    .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0") \
+    .config("spark.executor.memory", "4g") \
+    .config("spark.driver.memory", "4g") \
+    .getOrCreate()
 spark.sparkContext.setLogLevel("WARN")
 
 # 2. Définir les schémas corrects pour les deux sources
@@ -129,7 +143,7 @@ df_api_10min = df_api_cleaned \
     )
 
 df_local_10min = df_local_cleaned \
-    .withWatermark("event_time", "5 minutes") \
+    .withWatermark("event_time", "15 minutes") \
     .groupBy(window(col("event_time"), "10 minutes")) \
     .agg(
         avg("temperature").alias("temperature"),
@@ -154,8 +168,8 @@ df_local_10min = df_local_cleaned \
 df_all_10min = df_api_10min.unionByName(df_local_10min)
 
 # 8. Fusion des données avec priorisation du local quand disponible
-df_fused = df_all_10min \
-    .withWatermark("interval_start", "10 minutes") \
+df_fused_raw = df_all_10min \
+    .withWatermark("interval_start", "15 minutes") \
     .groupBy(col("interval_start"), col("interval_end")) \
     .pivot("source", ["local", "api"]) \
     .agg(
@@ -166,29 +180,24 @@ df_fused = df_all_10min \
         avg("wind_deg").alias("wind_deg"),
         avg("feels_like").alias("feels_like"),
         avg("uvi").alias("uvi")
-    ) \
-    .select(
-        col("interval_start"),
-        col("interval_end"),
-        # Priorité aux données locales avec basculement automatique pour les données communes
-        coalesce(col("local_temp"), col("api_temp")).alias("temperature"),
-        coalesce(col("local_humidity"), col("api_humidity")).alias("humidity"),
-        coalesce(col("local_pressure"), col("api_pressure")).alias("pressure"),
-        # Données uniquement disponibles via l'API
-        col("api_wind_speed").alias("wind_speed"),
-        col("api_wind_deg").alias("wind_deg"),
-        col("api_feels_like").alias("feels_like"),
-        col("api_uvi").alias("uvi"),
-        # Indication des sources utilisées pour les données principales
-        when(col("local_temp").isNotNull(), "local")
-            .otherwise("api").alias("temp_source"),
-        when(col("local_humidity").isNotNull(), "local")
-            .otherwise("api").alias("humidity_source"),
-        when(col("local_pressure").isNotNull(), "local")
-            .otherwise("api").alias("pressure_source")
     )
 
-# 9. Calcul des moyennes horaires à partir des données fusionnées
+# 9. Sélection finale - SEULEMENT les colonnes business (pas de source)
+df_fused = df_fused_raw.select(
+    col("interval_start"),
+    col("interval_end"),
+    # Fusion intelligente mais résultat propre
+    coalesce(col("local_temp"), col("api_temp")).alias("temperature"),
+    coalesce(col("local_humidity"), col("api_humidity")).alias("humidity"),
+    coalesce(col("local_pressure"), col("api_pressure")).alias("pressure"),
+    col("api_wind_speed").alias("wind_speed"),
+    col("api_wind_deg").alias("wind_deg"),
+    col("api_feels_like").alias("feels_like"),
+    col("api_uvi").alias("uvi")
+    # PAS de colonne source dans le résultat final
+)
+
+# 10. Calcul des moyennes horaires à partir des données fusionnées
 df_hourly_avg = df_fused \
     .withWatermark("interval_start", "1 hour") \
     .groupBy(window(col("interval_start"), "1 hour")) \
@@ -213,7 +222,7 @@ df_hourly_avg = df_fused \
         col("avg_uvi")
     )
 
-# 10. Calcul des moyennes journalières
+# 11. Calcul des moyennes journalières
 df_daily_avg = df_fused \
     .withWatermark("interval_start", "1 day") \
     .groupBy(window(col("interval_start"), "1 day")) \
@@ -238,35 +247,32 @@ df_daily_avg = df_fused \
         col("avg_uvi")
     )
 
-
-# 11. Écriture des données fusionnées (10 minutes) au format CSV
-query_fused = df_fused.writeStream \
-    .format("csv") \
-    .option("path", "./resultats/weather_fused_10min/") \
-    .option("checkpointLocation", "./checkpoints/weather_fused_10min/") \
-    .option("header", "true") \
+# 12. Sauvegarde S3 format Parquet (optimal pour dashboard)
+query_fused_s3 = df_fused.writeStream \
+    .format("parquet") \
+    .option("path", "s3a://weatherdata-bucket-00132345/weather-data/fused-10min/") \
+    .option("checkpointLocation", "s3a://weatherdata-bucket-00132345/checkpoints/weather-fused-10min/") \
     .outputMode("append") \
+    .trigger(processingTime='10 minutes') \
     .start()
 
-# 12. Écriture des moyennes horaires au format CSV
-query_hourly = df_hourly_avg.writeStream \
-    .format("csv") \
-    .option("path", "./resultats/weather_hourly/") \
-    .option("checkpointLocation", "./checkpoints/weather_hourly/") \
-    .option("header", "true") \
+query_hourly_s3 = df_hourly_avg.writeStream \
+    .format("parquet") \
+    .option("path", "s3a://weatherdata-bucket-00132345/weather-data/hourly/") \
+    .option("checkpointLocation", "s3a://weatherdata-bucket-00132345/checkpoints/weather-hourly/") \
     .outputMode("append") \
+    .trigger(processingTime='1 hour') \
     .start()
 
-# 13. Écriture des moyennes journalières au format CSV
-query_daily = df_daily_avg.writeStream \
-    .format("csv") \
-    .option("path", "./resultats/weather_daily/") \
-    .option("checkpointLocation", "./checkpoints/weather_daily/") \
-    .option("header", "true") \
+query_daily_s3 = df_daily_avg.writeStream \
+    .format("parquet") \
+    .option("path", "s3a://weatherdata-bucket-00132345/weather-data/daily/") \
+    .option("checkpointLocation", "s3a://weatherdata-bucket-00132345/checkpoints/weather-daily/") \
     .outputMode("append") \
+    .trigger(processingTime='6 hours') \
     .start()
 
-# 14. Affichage console pour monitoring (optionnel)
+# 13. Affichage console pour monitoring (optionnel)
 query_monitor = df_fused.writeStream \
     .outputMode("append") \
     .format("console") \
