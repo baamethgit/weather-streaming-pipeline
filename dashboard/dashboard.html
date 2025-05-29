@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Météo - Big Data</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #e3f2fd 0%, #f8fbff 100%);
+            color: #2c3e50;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(79, 195, 247, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.6rem;
+            font-weight: 600;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4caf50;
+            box-shadow: 0 0 10px #4caf50;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .nav-tabs {
+            background: white;
+            border-bottom: 1px solid rgba(79, 195, 247, 0.2);
+            padding: 0 2rem;
+            display: flex;
+            gap: 0;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #64748b;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tab-btn:hover {
+            color: #4fc3f7;
+            background: rgba(79, 195, 247, 0.05);
+        }
+
+        .tab-btn.active {
+            color: #4fc3f7;
+            border-bottom-color: #4fc3f7;
+            background: rgba(79, 195, 247, 0.08);
+        }
+
+        .tab-content {
+            display: none;
+            padding: 1.5rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Vue d'ensemble */
+        .overview-grid {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 1.5rem;
+            height: calc(100vh - 160px);
+        }
+
+        .metrics-panel {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 1.5rem;
+        }
+
+        .current-metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+            border-radius: 12px;
+            padding: 1.2rem;
+            box-shadow: 0 4px 15px rgba(79, 195, 247, 0.1);
+            border: 1px solid rgba(79, 195, 247, 0.2);
+            transition: transform 0.2s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .metric-header {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .metric-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .metric-info h3 {
+            font-size: 0.85rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .metric-change {
+            font-size: 0.8rem;
+            margin-top: 0.3rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .change-positive { color: #10b981; }
+        .change-negative { color: #ef4444; }
+
+        .main-chart {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(79, 195, 247, 0.1);
+            border: 1px solid rgba(79, 195, 247, 0.2);
+        }
+
+        .chart-controls {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .chart-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .time-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .time-btn {
+            background: #f1f5f9;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #64748b;
+        }
+
+        .time-btn.active {
+            background: #4fc3f7;
+            color: white;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .forecast-card, .quick-stats {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(79, 195, 247, 0.1);
+            border: 1px solid rgba(79, 195, 247, 0.2);
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .forecast-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .forecast-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem;
+            background: rgba(79, 195, 247, 0.05);
+            border-radius: 8px;
+            border-left: 3px solid #4fc3f7;
+        }
+
+        /* Vue Analytique */
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            height: calc(100vh - 160px);
+        }
+
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(79, 195, 247, 0.1);
+            border: 1px solid rgba(79, 195, 247, 0.2);
+        }
+
+        .chart-container {
+            height: 300px;
+            position: relative;
+        }
+
+        /* Vue Monitoring */
+        .monitoring-grid {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 1.5rem;
+            height: calc(100vh - 160px);
+        }
+
+        .alerts-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .alert-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(79, 195, 247, 0.1);
+            border: 1px solid rgba(79, 195, 247, 0.2);
+        }
+
+        .alert-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .alert-item {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+
+        .alert-critical {
+            background: #fef2f2;
+            border-color: #ef4444;
+        }
+
+        .alert-warning {
+            background: #fff7ed;
+            border-color: #f97316;
+        }
+
+        .alert-info {
+            background: #eff6ff;
+            border-color: #3b82f6;
+        }
+
+        .alert-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+        }
+
+        .system-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .stat-card {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-top: 0.3rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .overview-grid, .monitoring-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .current-metrics {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .current-metrics {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav-tabs {
+                overflow-x: auto;
+                padding: 0 1rem;
+            }
+            
+            .tab-content {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🌤️ Dashboard Météo Big Data</h1>
+        <div class="status-indicator">
+            <div class="status-dot"></div>
+            <span>Temps réel actif</span>
+        </div>
+    </header>
+
+    <nav class="nav-tabs">
+        <button class="tab-btn active" data-tab="overview">📊 Vue d'ensemble</button>
+        <button class="tab-btn" data-tab="analytics">📈 Analyses</button>
+        <button class="tab-btn" data-tab="monitoring">🔍 Monitoring</button>
+        <button class="tab-btn" data-tab="predictions">🔮 Prédictions</button>
+    </nav>
+
+    <!-- Vue d'ensemble -->
+    <div id="overview" class="tab-content active">
+        <div class="overview-grid">
+            <div class="metrics-panel">
+                <div class="current-metrics">
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon" style="background: #fef3c7; color: #f59e0b;">🌡️</div>
+                            <div class="metric-info">
+                                <h3>Température Actuelle</h3>
+                            </div>
+                        </div>
+                        <div class="metric-value">22.5°C</div>
+                        <div class="metric-change change-positive">↗ +1.2°C vs hier</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon" style="background: #dbeafe; color: #3b82f6;">💧</div>
+                            <div class="metric-info">
+                                <h3>Humidité Relative</h3>
+                            </div>
+                        </div>
+                        <div class="metric-value">65%</div>
+                        <div class="metric-change change-negative">↘ -3% vs hier</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon" style="background: #f3e8ff; color: #8b5cf6;">🌪️</div>
+                            <div class="metric-info">
+                                <h3>Vitesse du Vent</h3>
+                            </div>
+                        </div>
+                        <div class="metric-value">12 km/h</div>
+                        <div class="metric-change" style="color: #64748b;">Direction: NE</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon" style="background: #ecfdf5; color: #10b981;">📊</div>
+                            <div class="metric-info">
+                                <h3>Pression Atmos.</h3>
+                            </div>
+                        </div>
+                        <div class="metric-value">1013 hPa</div>
+                        <div class="metric-change change-positive">↗ +2 hPa</div>
+                    </div>
+                </div>
+
+                <div class="main-chart">
+                    <div class="chart-controls">
+                        <h3 class="chart-title">Évolution des Températures</h3>
+                        <div class="time-controls">
+                            <button class="time-btn active" data-period="24h">24h</button>
+                            <button class="time-btn" data-period="7j">7 jours</button>
+                            <button class="time-btn" data-period="30j">30 jours</button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="overviewChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="forecast-card">
+                    <h3 class="card-title">🔮 Prédictions 4h</h3>
+                    <div class="forecast-list">
+                        <div class="forecast-item">
+                            <span>14:00</span>
+                            <strong>24.2°C</strong>
+                        </div>
+                        <div class="forecast-item">
+                            <span>15:00</span>
+                            <strong>25.1°C</strong>
+                        </div>
+                        <div class="forecast-item">
+                            <span>16:00</span>
+                            <strong>24.8°C</strong>
+                        </div>
+                        <div class="forecast-item">
+                            <span>17:00</span>
+                            <strong>23.5°C</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="quick-stats">
+                    <h3 class="card-title">📊 Stats Rapides</h3>
+                    <div class="system-stats">
+                        <div class="stat-card">
+                            <div class="stat-value">144</div>
+                            <div class="stat-label">Mesures aujourd'hui</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">98.5%</div>
+                            <div class="stat-label">Disponibilité</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">1.2s</div>
+                            <div class="stat-label">Latence moyenne</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">2.1MB</div>
+                            <div class="stat-label">Données/jour</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vue Analytique -->
+    <div id="analytics" class="tab-content">
+        <div class="analytics-grid">
+            <div class="chart-card">
+                <h3 class="card-title">📈 Tendances Hebdomadaires</h3>
+                <div class="chart-container">
+                    <canvas id="weeklyChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3 class="card-title">🌦️ Distribution Météo</h3>
+                <div class="chart-container">
+                    <canvas id="weatherDistChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3 class="card-title">💨 Rose des Vents</h3>
+                <div class="chart-container">
+                    <canvas id="windChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3 class="card-title">📊 Moyennes Mensuelles</h3>
+                <div class="chart-container">
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vue Monitoring -->
+    <div id="monitoring" class="tab-content">
+        <div class="monitoring-grid">
+            <div class="alerts-panel">
+                <div class="alert-card">
+                    <h3 class="card-title">🚨 Alertes Système</h3>
+                    <div class="alert-list">
+                        <div class="alert-item alert-warning">
+                            <div class="alert-icon" style="background: #f97316;">⚠</div>
+                            <div>
+                                <strong>Retard de données</strong><br>
+                                <small>Dernière réception: il y a 12 minutes</small>
+                            </div>
+                        </div>
+                        <div class="alert-item alert-critical">
+                            <div class="alert-icon" style="background: #ef4444;">!</div>
+                            <div>
+                                <strong>Température anormale</strong><br>
+                                <small>Pic détecté à 13:45 (32.1°C)</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert-card">
+                    <h3 class="card-title">📊 Métriques Système</h3>
+                    <div class="chart-container" style="height: 250px;">
+                        <canvas id="systemChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="quick-stats">
+                    <h3 class="card-title">⚡ Performance</h3>
+                    <div class="system-stats">
+                        <div class="stat-card">
+                            <div class="stat-value">98.5%</div>
+                            <div class="stat-label">Uptime</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">1.2s</div>
+                            <div class="stat-label">Latence</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">5</div>
+                            <div class="stat-label">Erreurs/jour</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">2.1MB</div>
+                            <div class="stat-label">Taille DB</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vue Prédictions -->
+    <div id="predictions" class="tab-content">
+        <div class="analytics-grid">
+            <div class="chart-card">
+                <h3 class="card-title">🔮 Prédictions 24h</h3>
+                <div class="chart-container">
+                    <canvas id="predictionChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3 class="card-title">📊 Modèle de Prédiction</h3>
+                <div class="chart-container">
+                    <canvas id="modelChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Gestion des onglets
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const tabId = this.dataset.tab;
+                
+                // Désactiver tous les onglets et contenus
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Activer l'onglet et contenu sélectionnés
+                this.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+                
+                // Initialiser les graphiques si nécessaire
+                initCharts(tabId);
+            });
+        });
+
+        // Configuration globale Chart.js
+        Chart.defaults.font.family = "'Segoe UI', sans-serif";
+        Chart.defaults.color = '#64748b';
+
+        let charts = {};
+
+        function initCharts(tabId) {
+            if (tabId === 'overview' && !charts.overview) {
+                const ctx = document.getElementById('overviewChart').getContext('2d');
+                charts.overview = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+                        datasets: [{
+                            label: 'Température',
+                            data: [18.5, 17.2, 21.8, 24.5, 23.2, 20.1],
+                            borderColor: '#4fc3f7',
+                            backgroundColor: 'rgba(79, 195, 247, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { 
+                                ticks: { callback: value => value + '°C' }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            if (tabId === 'analytics' && !charts.weekly) {
+                // Graphique hebdomadaire
+                const weeklyCtx = document.getElementById('weeklyChart').getContext('2d');
+                charts.weekly = new Chart(weeklyCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
+                        datasets: [{
+                            label: 'Temp. Moyenne',
+                            data: [22.1, 23.5, 21.8, 24.2, 25.1, 23.8, 22.4],
+                            backgroundColor: '#4fc3f7'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } }
+                    }
+                });
+                
+                // Distribution météo
+                const distCtx = document.getElementById('weatherDistChart').getContext('2d');
+                charts.distribution = new Chart(distCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Ensoleillé', 'Nuageux', 'Pluvieux'],
+                        datasets: [{
+                            data: [65, 25, 10],
+                            backgroundColor: ['#4fc3f7', '#81c784', '#ffb74d']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+            
+            if (tabId === 'monitoring' && !charts.system) {
+                const sysCtx = document.getElementById('systemChart').getContext('2d');
+                charts.system = new Chart(sysCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['10:00', '11:00', '12:00', '13:00', '14:00'],
+                        datasets: [{
+                            label: 'CPU %',
+                            data: [45, 52, 48, 65, 58],
+                            borderColor: '#ef4444',
+                            tension: 0.4
+                        }, {
+                            label: 'Mémoire %',
+                            data: [32, 35, 38, 42, 40],
+                            borderColor: '#4fc3f7',
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+            
+            if (tabId === 'predictions' && !charts.prediction) {
+                const predCtx = document.getElementById('predictionChart').getContext('2d');
+                charts.prediction = new Chart(predCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Maintenant', '+1h', '+2h', '+3h', '+4h'],
+                        datasets: [{
+                            label: 'Prédiction',
+                            data: [22.5, 23.1, 24.2, 23.8, 23.0],
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+        }
+
+        // Initialiser les graphiques de la vue d'ensemble au chargement
+        initCharts('overview');
+
+        // Gestion des contrôles temporels
+        document.querySelectorAll('.time-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Mise à jour des données du graphique
+                const period = this.dataset.period;
+                if (charts.overview) {
+                    const data = {
+                        '24h': [18.5, 17.2, 21.8, 24.5, 23.2, 20.1],
+                        '7j': [20.1, 21.5, 22.8, 23.2, 24.1, 22.9],
+                        '30j': [19.2, 20.8, 22.1, 23.5, 21.9, 20.5]
+                    };
+                    charts.overview.data.datasets[0].data = data[period];
+                    charts.overview.update();
+                }
+            });
+        });
+
+        // Simulation de mise à jour temps réel
+        setInterval(() => {
+            const temp = (Math.random() * 6 + 19).toFixed(1);
+            document.querySelector('.metric-value').textContent = temp + '°C';
+        }, 5000);
+    </script>
+</body>
+</html>
