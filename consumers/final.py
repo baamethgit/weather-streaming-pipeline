@@ -7,6 +7,7 @@ from pyspark.sql.functions import when, coalesce,first
 
 from pyspark.sql.types import StructType, StringType, DoubleType, LongType
 from pyspark.sql.functions import to_date
+from predictions_model.predictions import generate_predictions
 
 # Configuration Spark
 spark = SparkSession.builder \
@@ -54,6 +55,7 @@ df_local_raw = spark.readStream \
     .option("subscribe", "capteur-iot") \
     .option("startingOffsets", "earliest") \
     .load()
+
 # Parsing et nettoyage (identique à votre code)
 df_api = df_api_raw.selectExpr("CAST(value AS STRING)") \
     .select(from_json(col("value"), api_schema).alias("data")) \
@@ -320,7 +322,11 @@ debug_daily = df_daily.writeStream \
     .trigger(processingTime='1 hour') \
     .start()
 
+prediction_stream = df_hourly.writeStream \
+    .foreachBatch(generate_predictions) \
+    .option("checkpointLocation", "./checkpoints/predictions") \
+    .trigger(processingTime='1 hour') \
+    .start()
+
 # Attendre la fin des streams
 spark.streams.awaitAnyTermination()
-
-
