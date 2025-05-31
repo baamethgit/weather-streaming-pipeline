@@ -128,12 +128,13 @@ if __name__ == "__main__":
     rows = cur.fetchall()
     cur.close()
     conn.close()
+    print("rows",rows)
 
     temp_data = [row[0] for row in rows][::-1]
     humidity_data = [row[1] for row in rows][::-1]
     wind_data = [row[2] for row in rows][::-1]
 
-    print(temp_data)
+    print('temp_data',temp_data)
 
     # Prédiction
     predictions = predict_temperature_4h(temp_data, humidity_data, wind_data)
