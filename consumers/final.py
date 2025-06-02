@@ -77,13 +77,7 @@ spark = SparkSession.builder \
 spark.conf.set("spark.sql.streaming.stateStore.stateSchemaCheck", "false")
 spark.sparkContext.setLogLevel("ERROR")
 
-# ============ IMPORT DU SYSTÈME D'ALERTES ============
-from monitoring.weather_alerts_logging import (
-    setup_monitoring_for_pipeline, 
-    AlertManager, 
-    AlertType, 
-    AlertSeverity,
-)
+
 
 # ============ SCHÉMAS (identiques) ============
 api_schema = StructType() \
@@ -273,21 +267,21 @@ df_daily = df_raw_10min \
         col("weather_main")
     )
 
-# ============ INTÉGRATION DU SYSTÈME D'ALERTES (CORRIGÉ) ============
-monitoring_system = setup_monitoring_for_pipeline(
-    spark, logger, df_api, df_local, df_unified
-)
+# # ============ INTÉGRATION DU SYSTÈME D'ALERTES (CORRIGÉ) ============
+# monitoring_system = setup_monitoring_for_pipeline(
+#     spark, logger, df_api, df_local, df_unified
+# )
 
-alert_manager = monitoring_system["alert_manager"]
+# alert_manager = monitoring_system["alert_manager"]
 
 # Alerte de démarrage
-alert_manager.create_alert(
-    AlertType.SYSTEM_HEALTH,
-    AlertSeverity.LOW,
-    "Pipeline météo démarré avec succès",
-    "system",
-    {"version": "1.0", "spark_version": spark.version}
-)
+# alert_manager.create_alert(
+#     AlertType.SYSTEM_HEALTH,
+#     AlertSeverity.LOW,
+#     "Pipeline météo démarré avec succès",
+#     "system",
+#     {"version": "1.0", "spark_version": spark.version}
+# )
 
 logger.info("Pipeline météo démarré avec surveillance complète")
 

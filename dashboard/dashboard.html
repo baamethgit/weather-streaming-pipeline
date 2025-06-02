@@ -6,455 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Météo </title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #e3f2fd 0%, #f8fbff 100%);
-            color: #2c3e50;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%);
-            color: white;
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 10px rgba(79, 195, 247, 0.3);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .header h1 {
-            font-size: 1.6rem;
-            font-weight: 600;
-        }
-
-        .status-indicator {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: rgba(255, 255, 255, 0.2);
-            padding: 0.5rem 1rem;
-            border-radius: 25px;
-            backdrop-filter: blur(10px);
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #4caf50;
-            box-shadow: 0 0 10px #4caf50;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.5;
-            }
-
-            100% {
-                opacity: 1;
-            }
-        }
-
-        .nav-tabs {
-            background: white;
-            border-bottom: 1px solid rgba(79, 195, 247, 0.2);
-            padding: 0 2rem;
-            display: flex;
-            gap: 0;
-        }
-
-        .tab-btn {
-            background: none;
-            border: none;
-            padding: 1rem 1.5rem;
-            cursor: pointer;
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: #64748b;
-            border-bottom: 3px solid transparent;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-
-        .tab-btn:hover {
-            color: #4fc3f7;
-            background: rgba(79, 195, 247, 0.05);
-        }
-
-        .tab-btn.active {
-            color: #4fc3f7;
-            border-bottom-color: #4fc3f7;
-            background: rgba(79, 195, 247, 0.08);
-        }
-
-        .tab-content {
-            display: none;
-            padding: 1.5rem;
-            animation: fadeIn 0.3s ease;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-
-        .overview-grid {
-    height: calc(100vh - 160px);
-}
-
-.metrics-panel {
-    display: grid;
-    grid-template-rows: auto 1fr;
-    gap: 1.5rem;
-}
-
-.current-metrics {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 0.8rem;
-    margin-bottom: 1rem;
-}
-
-.metric-card {
-    background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
-    border-radius: 10px;
-    padding: 1rem;
-    box-shadow: 0 4px 15px rgba(79, 195, 247, 0.1);
-    border: 1px solid rgba(79, 195, 247, 0.2);
-}
-
-.metric-header {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    margin-bottom: 0.8rem;
-}
-
-.metric-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-}
-
-.metric-info h3 {
-    font-size: 0.85rem;
-    color: #64748b;
-    font-weight: 500;
-    margin: 0;
-}
-
-.metric-value {
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: #1e293b;
-    margin: 0;
-}
-
-.metric-change {
-    font-size: 0.8rem;
-    margin-top: 0.3rem;
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-}
-
-.change-positive {
-    color: #10b981;
-}
-
-.change-negative {
-    color: #ef4444;
-}
-
-/* Section principale avec graphique et prédictions */
-.main-section {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 1.5rem;
-    height: 100%;
-}
-
-.main-chart {
-    background: white;
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 4px 15px rgba(79, 195, 247, 0.1);
-    border: 1px solid rgba(79, 195, 247, 0.2);
-    display: flex;
-    flex-direction: column;
-}
-
-.chart-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.chart-title {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: #1e293b;
-    margin: 0;
-}
-
-.chart-container {
-    flex: 1;
-    position: relative;
-    min-height: 300px;
-}
-
-.sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
-
-.forecast-card {
-    background: white;
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 4px 15px rgba(79, 195, 247, 0.1);
-    border: 1px solid rgba(79, 195, 247, 0.2);
-}
-
-.card-title {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #1e293b;
-    margin: 0 0 1rem 0;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.forecast-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.8rem;
-}
-
-.forecast-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    background: rgba(79, 195, 247, 0.05);
-    border-radius: 8px;
-    border-left: 3px solid #4fc3f7;
-}
-
-.forecast-item span {
-    color: #64748b;
-    font-weight: 500;
-}
-
-.forecast-item strong {
-    color: #1e293b;
-    font-size: 1.1rem;
-}
-
-/* Ajustements pour les écrans plus petits */
-@media (max-width: 1200px) {
-    .main-section {
-        grid-template-columns: 1.5fr 1fr;
-        gap: 1rem;
-    }
     
-    .current-metrics {
-        grid-template-columns: repeat(3, 1fr);
-    }
-}
-
-@media (max-width: 768px) {
-    .main-section {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-    
-    .current-metrics {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .forecast-card {
-        order: -1; /* Mettre les prédictions en haut sur mobile */
-    }
-}
-
-/* vue analyse */
-
-.analytics-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1.5rem;
-            height: calc(100vh - 160px);
-        }
-
-        .chart-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 15px rgba(79, 195, 247, 0.1);
-            border: 1px solid rgba(79, 195, 247, 0.2);
-        }
-
-        .chart-container {
-            height: 300px;
-            position: relative;
-        }
-        /* Vue Monitoring */
-        .monitoring-grid {
-            display: grid;
-            grid-template-columns: 1fr 350px;
-            gap: 1.5rem;
-            height: calc(100vh - 160px);
-        }
-
-        .alerts-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-
-        .alert-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 15px rgba(79, 195, 247, 0.1);
-            border: 1px solid rgba(79, 195, 247, 0.2);
-        }
-
-        .alert-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.8rem;
-        }
-
-        .alert-item {
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-            padding: 1rem;
-            border-radius: 8px;
-            border-left: 4px solid;
-        }
-
-        .alert-critical {
-            background: #fef2f2;
-            border-color: #ef4444;
-        }
-
-        .alert-warning {
-            background: #fff7ed;
-            border-color: #f97316;
-        }
-
-        .alert-info {
-            background: #eff6ff;
-            border-color: #3b82f6;
-        }
-
-        .alert-icon {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 12px;
-        }
-
-        .system-stats {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-        }
-
-        .stat-card {
-            background: #f8fafc;
-            border-radius: 8px;
-            padding: 1rem;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #1e293b;
-        }
-
-        .stat-label {
-            font-size: 0.8rem;
-            color: #64748b;
-            margin-top: 0.3rem;
-        }
-
-        /* Responsive */
-        @media (max-width: 1200px) {
-
-            .overview-grid,
-            .monitoring-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .analytics-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .current-metrics {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 768px) {
-            .current-metrics {
-                grid-template-columns: 1fr;
-            }
-
-            .nav-tabs {
-                overflow-x: auto;
-                padding: 0 1rem;
-            }
-
-            .tab-content {
-                padding: 1rem;
-            }
-        }
-    </style>
 </head>
 
 <body>
     <header class="header">
-        <h1>🌤️ Dashboard Météo</h1>
+        <h1> Dashboard Météo</h1>
         <div class="status-indicator">
             <div class="status-dot"></div>
             <span>EPT - DIC2 GIT</span>
@@ -469,93 +26,94 @@
     </nav>
 
     <!-- Vue d'ensemble -->
-   <div id="overview" class="tab-content active">
-    <div class="overview-grid">
-        <div class="metrics-panel">
-            <div class="current-metrics">
-                <div class="metric-card">
-                    <div class="metric-header">
-                        <div class="metric-icon" style="background: #fef3c7; color: #f59e0b;">🌡️</div>
-                        <div class="metric-info">
-                            <h3>Température Actuelle</h3>
-                        </div>
-                    </div>
-                    <div class="metric-value">22.5°C</div>
-                    <div class="metric-change change-positive">Temp ressentie : 30.2°C</div>
-                </div>
-
-                <div class="metric-card">
-                    <div class="metric-header">
-                        <div class="metric-icon" style="background: #dbeafe; color: #3b82f6;">💧</div>
-                        <div class="metric-info">
-                            <h3>Humidité Relative</h3>
-                        </div>
-                    </div>
-                    <div class="metric-value">65%</div>
-                </div>
-
-                <div class="metric-card">
-                    <div class="metric-header">
-                        <div class="metric-icon" style="background: #f3e8ff; color: #8b5cf6;">🌪️</div>
-                        <div class="metric-info">
-                            <h3>Vitesse du Vent</h3>
-                        </div>
-                    </div>
-                    <div class="metric-value">12 km/h</div>
-                    <div class="metric-change" style="color: #64748b;">Direction: NE</div>
-                </div>
-
-                <div class="metric-card">
-                    <div class="metric-header">
-                        <div class="metric-icon" style="background: #ecfdf5; color: #10b981;">📊</div>
-                        <div class="metric-info">
-                            <h3>Pression Atmos.</h3>
-                        </div>
-                    </div>
-                    <div class="metric-value">1013 hPa</div>
-                </div>
-
-                <div class="metric-card">
-                    <div class="metric-header">
-                        <div class="metric-icon" style="background: #fef3c7; color: #f59e0b;">⛅</div>
-                        <div class="metric-info">
-                            <h3>Conditions</h3>
-                        </div>
-                    </div>
-                    <div class="metric-value">Nuageux</div>
-                    <div class="metric-change">Légère pluie</div>
-                </div>
-            </div>
-
-            <div class="main-section">
-                <div class="main-chart">
-                    <div class="chart-controls">
-                        <h3 class="chart-title">Évolution des Températures (Passé/Prédictions)</h3>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="overviewChart"></canvas>
-                    </div>
-                </div>
-                
-                <div class="sidebar">
-                    <div class="forecast-card">
-                        <h3 class="card-title">🔮 Prédictions 4h</h3>
-                        <div class="forecast-list">
-                            <div class="forecast-item">
-                                <span>14:00</span>
-                                <strong>24.2°C</strong>
+    <div id="overview" class="tab-content active">
+        <div class="overview-grid">
+            <div class="metrics-panel">
+                <div class="current-metrics">
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon" style="background: #fef3c7; color: #f59e0b;">🌡️</div>
+                            <div class="metric-info">
+                                <h3>Température Actuelle</h3>
                             </div>
-                            <div class="forecast-item">
-                                <span>15:00</span>
-                                <strong>25.1°C</strong>
+                        </div>
+                        <div class="metric-value">22.5°C</div>
+                        <div class="metric-change change-positive">Temp ressentie : 30.2°C</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon" style="background: #dbeafe; color: #3b82f6;">💧</div>
+                            <div class="metric-info">
+                                <h3>Humidité Relative</h3>
                             </div>
-                            <div class="forecast-item">
-                                <span>16:00</span>
-                                <strong>24.8°C</strong>
+                        </div>
+                        <div class="metric-value">65%</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon" style="background: #f3e8ff; color: #8b5cf6;">🌪️</div>
+                            <div class="metric-info">
+                                <h3>Vitesse du Vent</h3>
                             </div>
-                            <div class="forecast-item">
-                                <span>17:00</span>
-                                <strong>23.5°C</strong>
+                        </div>
+                        <div class="metric-value">12 km/h</div>
+                        <div class="metric-change" style="color: #64748b;">Direction: NE</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon" style="background: #ecfdf5; color: #10b981;">📊</div>
+                            <div class="metric-info">
+                                <h3>Pression Atmos.</h3>
+                            </div>
+                        </div>
+                        <div class="metric-value">1013 hPa</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div class="metric-icon" style="background: #fef3c7; color: #f59e0b;">⛅</div>
+                            <div class="metric-info">
+                                <h3>Conditions</h3>
+                            </div>
+                        </div>
+                        <div class="metric-value">Nuageux</div>
+                        <div class="metric-change">Légère pluie</div>
+                    </div>
+                </div>
+
+                <div class="main-section">
+                    <div class="main-chart">
+                        <div class="chart-controls">
+                            <h3 class="chart-title">Évolution des Températures (Passé/Prédictions)</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="overviewChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="sidebar">
+                        <div class="forecast-card">
+                            <h3 class="card-title">🔮 Prédictions 4h</h3>
+                            <div class="forecast-list">
+                                <div class="forecast-item">
+                                    <span id="pred-h1">--:--</span>
+                                    <strong>--°C</strong>
+                                </div>
+                                <div class="forecast-item">
+                                    <span id="pred-h2">--:--</span>
+                                    <strong>--°C</strong>
+                                </div>
+                                <div class="forecast-item">
+                                    <span id="pred-h3">--:--</span>
+                                    <strong>--°C</strong>
+                                </div>
+                                <div class="forecast-item">
+                                    <span id="pred-h4">--:--</span>
+                                    <strong>--°C</strong>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -563,10 +121,9 @@
             </div>
         </div>
     </div>
-</div>
 
     <!-- Vue Analytique -->
-        <div id="analytics" class="tab-content">
+    <div id="analytics" class="tab-content">
         <div class="analytics-grid">
             <!-- Remplacement tendances hebdo par Min/Max -->
             <div class="chart-card">
@@ -575,7 +132,7 @@
                     <canvas id="extremesChart"></canvas>
                 </div>
             </div>
-            
+
             <!-- Remplacement distribution météo par Rose des vents -->
             <div class="chart-card">
                 <h3 class="card-title">💨 Rose des Vents</h3>
@@ -587,7 +144,7 @@
     </div>
 
     <!-- Vue Monitoring -->
-    <div id="monitoring" class="tab-content">
+    <!-- <div id="monitoring" class="tab-content">
         <div class="monitoring-grid">
             <div class="alerts-panel">
                 <div class="alert-card">
@@ -642,8 +199,61 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
+<div id="monitoring" class="tab-content">
+    <div class="monitoring-grid">
+        <div class="alerts-panel">
+            <!-- Alertes système -->
+            <div class="alert-card">
+                <h3 class="card-title">🚨 Alertes Système</h3>
+                <div id="system-alerts" class="alert-list">
+                    <div class="loading">Chargement...</div>
+                </div>
+            </div>
 
+            <!-- Log d'erreurs en temps réel -->
+            <div class="alert-card">
+                <h3 class="card-title">🔍 Journal des Erreurs</h3>
+                <div id="error-logs" class="logs-container">
+                    <div class="loading">Connexion aux logs...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <!-- Statistiques alertes -->
+            <div class="alert-card">
+                <h3 class="card-title">📊 Statistiques Alertes</h3>
+                <div class="stats-grid">
+                    <div class="stat-item critical">
+                        <div class="stat-number" id="critical-count">0</div>
+                        <div class="stat-label">Critiques</div>
+                    </div>
+                    <div class="stat-item high">
+                        <div class="stat-number" id="high-count">0</div>
+                        <div class="stat-label">Élevées</div>
+                    </div>
+                    <div class="stat-item medium">
+                        <div class="stat-number" id="medium-count">0</div>
+                        <div class="stat-label">Moyennes</div>
+                    </div>
+                    <div class="stat-item low">
+                        <div class="stat-number" id="low-count">0</div>
+                        <div class="stat-label">Informations</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Composants surveillés -->
+            <div class="alert-card">
+                <h3 class="card-title">⚙️ État des Composants</h3>
+                <div id="components-status" class="components-list">
+                    <div class="loading">Vérification...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
     <script>
         // Gestion des onglets
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -663,7 +273,7 @@
             });
         });
 
-         Chart.defaults.font.family = "'Segoe UI', sans-serif";
+        Chart.defaults.font.family = "'Segoe UI', sans-serif";
         Chart.defaults.color = '#64748b';
 
         let charts = {};
@@ -674,88 +284,44 @@
                 charts.overview = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: ['10h', '11h', 'Maintenant', '13h', '14h', '15h','16h'],
+                        labels: ['Pas de données'],
                         datasets: [{
                             label: 'Température',
-                            data: [20.1, 21.5, 22.5, 23.1, 23.8, 23.5,23.4],
+                            data: [0],
                             borderColor: '#4fc3f7',
                             backgroundColor: 'rgba(79, 195, 247, 0.1)',
                             borderWidth: 3,
                             fill: true,
-                            tension: 0.4,
-                            // Style différent pour les prédictions
-                            segment: {
-                                borderColor: ctx => ctx.p1DataIndex >= 3 ? '#4fc3f780' : '#4fc3f7',
-                                borderDash: ctx => ctx.p1DataIndex >= 3 ? [5, 5] : undefined
-                            }
+                            tension: 0.4
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: { 
-                            legend: { display: false },
-                            annotation: {
-                                annotations: {
-                                    lineNow: {
-                                        type: 'line',
-                                        xMin: 2,
-                                        xMax: 2,
-                                        borderColor: '#ff6b6b',
-                                        borderWidth: 2,
-                                        borderDash: [6, 6],
-                                        label: {
-                                            content: 'Maintenant',
-                                            enabled: true,
-                                            position: 'top'
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            y: { 
-                                ticks: { callback: value => value + '°C' }
-                            }
-                        }
+                        plugins: { legend: { display: false } },
+                        scales: { y: { ticks: { callback: value => value + '°C' } } }
                     }
                 });
             }
 
-               if (tabId === 'analytics' && !charts.extremes) {
-                // Nouveau graphique Températures Min/Max
+            if (tabId === 'analytics' && !charts.extremes) {
                 const extremesCtx = document.getElementById('extremesChart').getContext('2d');
                 charts.extremes = new Chart(extremesCtx, {
                     type: 'bar',
                     data: {
                         labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
                         datasets: [
-                            {
-                                label: 'Min',
-                                data: [18.1, 19.5, 17.8, 20.2, 21.1, 19.8, 18.4],
-                                backgroundColor: '#4fc3f7'
-                            },
-                            {
-                                label: 'Max',
-                                data: [25.1, 26.5, 24.8, 27.2, 28.1, 26.8, 25.4],
-                                backgroundColor: '#ef4444'
-                            }
+                            { label: 'Min', data: [null, null, null, null, null, null, null], backgroundColor: '#4fc3f7' },
+                            { label: 'Max', data: [null, null, null, null, null, null, null], backgroundColor: '#ef4444' }
                         ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                ticks: {
-                                    callback: value => value + '°C'
-                                }
-                            }
-                        }
+                        scales: { y: { ticks: { callback: value => value + '°C' } } }
                     }
                 });
-                
-                // Nouvelle Rose des vents
+
                 const windCtx = document.getElementById('windChart').getContext('2d');
                 charts.wind = new Chart(windCtx, {
                     type: 'radar',
@@ -763,7 +329,7 @@
                         labels: ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'],
                         datasets: [{
                             label: 'Vitesse du vent (km/h)',
-                            data: [8, 12, 5, 3, 4, 15, 10, 7],
+                            data: [0, 0, 0, 0, 0, 0, 0, 0],
                             backgroundColor: 'rgba(79, 195, 247, 0.2)',
                             borderColor: '#4fc3f7',
                             pointBackgroundColor: '#4fc3f7',
@@ -774,69 +340,29 @@
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        scales: {
-                            r: {
-                                angleLines: {
-                                    display: true
-                                },
-                                suggestedMin: 0
-                            }
-                        }
+                        scales: { r: { angleLines: { display: true }, suggestedMin: 0 } }
                     }
                 });
             }
-        
+
             if (tabId === 'monitoring' && !charts.system) {
                 const sysCtx = document.getElementById('systemChart').getContext('2d');
                 charts.system = new Chart(sysCtx, {
                     type: 'line',
                     data: {
                         labels: ['10:00', '11:00', '12:00', '13:00', '14:00'],
-                        datasets: [{
-                            label: 'CPU %',
-                            data: [45, 52, 48, 65, 58],
-                            borderColor: '#ef4444',
-                            tension: 0.4
-                        }, {
-                            label: 'Mémoire %',
-                            data: [32, 35, 38, 42, 40],
-                            borderColor: '#4fc3f7',
-                            tension: 0.4
-                        }]
+                        datasets: [
+                            { label: 'CPU %', data: [45, 52, 48, 65, 58], borderColor: '#ef4444', tension: 0.4 },
+                            { label: 'Mémoire %', data: [32, 35, 38, 42, 40], borderColor: '#4fc3f7', tension: 0.4 }
+                        ]
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false
-                    }
-                });
-            }
-
-            if (tabId === 'predictions' && !charts.prediction) {
-                const predCtx = document.getElementById('predictionChart').getContext('2d');
-                charts.prediction = new Chart(predCtx, {
-                    type: 'line',
-                    data: {
-                        labels: ['Maintenant', '+1h', '+2h', '+3h', '+4h'],
-                        datasets: [{
-                            label: 'Prédiction',
-                            data: [22.5, 23.1, 24.2, 23.8, 23.0],
-                            borderColor: '#10b981',
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            fill: true,
-                            tension: 0.4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } }
-                    }
+                    options: { responsive: true, maintainAspectRatio: false }
                 });
             }
         }
-
         // Initialiser les graphiques de la vue d'ensemble au chargement
         initCharts('overview');
+        initCharts('analytics'); 
 
         // Gestion des contrôles temporels
         document.querySelectorAll('.time-btn').forEach(btn => {
@@ -865,330 +391,655 @@
         // }, 5000);
 
         // Rafraîchir les valeurs actuelles toutes les 10 min
-// ============ FONCTIONS UTILITAIRES SÉCURISÉES ============
+        // ============ FONCTIONS UTILITAIRES SÉCURISÉES ============
 
-// Affichage sécurisé des valeurs numériques
-function safeDisplay(value, decimals = 1, unit = '') {
-    if (value === null || value === undefined || isNaN(value)) {
-        return 'N/A';
-    }
-    return `${value.toFixed(decimals)}${unit}`;
-}
+        // ============ FONCTIONS UTILITAIRES SÉCURISÉES ============
 
-// Vérifier la fraîcheur des données selon le type
-function isDataFresh(timestamp, dataType = 'raw') {
-    if (!timestamp) return false;
-    
-    const now = new Date();
-    const dataTime = new Date(timestamp);
-    const ageMinutes = (now - dataTime) / (1000 * 60);
-    
-    switch(dataType) {
-        case 'raw': return ageMinutes <= 20;        // Données 10min : max 20min
-        case 'hourly': return ageMinutes <= 90;     // Moyennes horaires : max 1h30
-        case 'predictions': return ageMinutes <= 240; // Prédictions : max 4h
-        case 'daily': return ageMinutes <= 1440;    // Données journalières : max 24h
-        default: return ageMinutes <= 30;
-    }
-}
-
-// Convertir degrés en direction
-function degToDir(deg) {
-    if (deg === null || deg === undefined || isNaN(deg)) return 'N/A';
-    const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
-    return dirs[Math.round(deg / 45) % 8];
-}
-
-// Mettre à jour l'indicateur de statut
-function updateStatusIndicator(isFresh, lastUpdate = null) {
-    const statusDot = document.querySelector('.status-dot');
-    const statusText = document.querySelector('.status-indicator span');
-    
-    if (isFresh) {
-        statusDot.style.background = '#4caf50';
-        statusDot.style.boxShadow = '0 0 10px #4caf50';
-        if (lastUpdate) {
-            const updateTime = new Date(lastUpdate).toLocaleTimeString('fr-FR', {
-                hour: '2-digit', minute: '2-digit'
-            });
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' });
-            statusText.textContent = `${dateStr.charAt(0).toUpperCase() + dateStr.slice(1)} (${updateTime})`;
-            // statusText.textContent = `EPT - DIC2 GIT (${updateTime})`;
-        }
-    } else {
-        statusDot.style.background = '#ff6b6b';
-        statusDot.style.boxShadow = '0 0 10px #ff6b6b';
-        const now = new Date();
-        const dateStr = now.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' });
-        statusText.textContent = `${dateStr.charAt(0).toUpperCase() + dateStr.slice(1)}  (DONNÉES OBSOLÈTES)`;
-        // statusText.textContent = 'EPT - DIC2 GIT (DONNÉES OBSOLÈTES)';
-    }
-}
-
-// ============ MISE À JOUR DES MÉTRIQUES ACTUELLES ============
-async function fetchAndUpdateCurrent() {
-    try {
-        const res = await fetch('http://127.0.0.1:5000/api/latest-raw');
-        
-        if (!res.ok) {
-            throw new Error(`HTTP ${res.status}`);
-        }
-        
-        const data = await res.json();
-        console.log("Données reçues:", data);
-
-        // Vérifier si on a des données
-        if (!data || Object.keys(data).length === 0) {
-            console.warn("Aucune donnée reçue de l'API");
-            updateStatusIndicator(false);
-            return;
-        }
-
-        // Vérifier la fraîcheur
-        const isFresh = isDataFresh(data.timestamp, 'raw');
-        updateStatusIndicator(isFresh, data.timestamp);
-
-        // Mise à jour sécurisée des métriques
-        const metricValues = document.querySelectorAll('.metric-value');
-        const metricChanges = document.querySelectorAll('.metric-change');
-
-        // Température
-        metricValues[0].textContent = safeDisplay(data.temperature, 1, '°C');
-        if (metricChanges[0]) {
-            metricChanges[0].textContent = `Temp ressentie : ${safeDisplay(data.feels_like, 1, '°C')}`;
-        }
-
-        // Humidité
-        if (metricValues[1]) {
-            metricValues[1].textContent = safeDisplay(data.humidity, 0, '%');
-        }
-
-        // Vent
-        if (metricValues[2]) {
-            metricValues[2].textContent = safeDisplay(data.wind_speed, 1, ' km/h');
-        }
-        if (metricChanges[1]) {
-            metricChanges[1].textContent = `Direction: ${degToDir(data.wind_deg)}`;
-        }
-
-        // Pression
-        if (metricValues[3]) {
-            metricValues[3].textContent = safeDisplay(data.pressure, 0, ' hPa');
-        }
-
-        // Conditions météo
-        if (metricValues[4]) {
-            metricValues[4].textContent = data.weather_main || 'N/A';
-        }
-        if (metricChanges[2]) {
-            metricChanges[2].textContent = data.weather_description || 'N/A';
-        }
-
-        // Si données obsolètes, ajouter une indication visuelle discrète
-        const metricCards = document.querySelectorAll('.metric-card');
-        metricCards.forEach(card => {
-            if (!isFresh) {
-                card.style.opacity = '0.7';
-                card.style.border = '1px solid #ff6b6b';
-            } else {
-                card.style.opacity = '1';
-                card.style.border = '1px solid rgba(79, 195, 247, 0.2)';
-            }
-        });
-
-    } catch (error) {
-        console.error("Erreur lors de la récupération des données actuelles:", error);
-        updateStatusIndicator(false);
-        
-        // Afficher un message d'erreur discret
-        const firstMetric = document.querySelector('.metric-value');
-        if (firstMetric) {
-            firstMetric.textContent = 'Erreur API';
-        }
-    }
-}
-
-// ============ MISE À JOUR DES PRÉDICTIONS ============
-async function fetchAndUpdatePredictions() {
-    try {
-        const res = await fetch('http://127.0.0.1:5000/api/predictions');
-        
-        if (!res.ok) {
-            console.warn("Pas de prédictions disponibles");
-            return;
-        }
-        
-        const data = await res.json();
-
-        if (!data || Object.keys(data).length === 0) {
-            console.warn("Données de prédiction vides");
-            return;
-        }
-
-        // Vérifier la fraîcheur des prédictions
-        const predictionsFresh = isDataFresh(data.prediction_time, 'predictions');
-        
-        const forecastItems = document.querySelectorAll('.forecast-item');
-        
-        for (let i = 0; i < 4 && i < forecastItems.length; i++) {
-            const item = forecastItems[i];
-            const span = item.querySelector('span');
-            const strong = item.querySelector('strong');
-            
-            if (span && strong) {
-                // Calculer l'heure prédite
-                const baseTime = data.prediction_time ? new Date(data.prediction_time) : new Date();
-                const futureHour = new Date(baseTime.getTime() + (i + 1) * 60 * 60 * 1000);
-                
-                span.textContent = futureHour.toLocaleTimeString('fr-FR', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-                
-                const predValue = data[`h_plus_${i + 1}`];
-                strong.textContent = safeDisplay(predValue, 1, '°C');
-                
-                // Indication visuelle si prédictions obsolètes
-                if (!predictionsFresh) {
-                    item.style.opacity = '0.6';
-                    item.style.borderLeftColor = '#ff6b6b';
-                } else {
-                    item.style.opacity = '1';
-                    item.style.borderLeftColor = '#4fc3f7';
-                }
-            }
-        }
-
-        // Mise à jour du graphique principal avec gestion d'erreurs
-        await updateMainChart(data);
-
-    } catch (error) {
-        console.error("Erreur lors de la récupération des prédictions:", error);
-    }
-}
-
-// ============ MISE À JOUR DU GRAPHIQUE PRINCIPAL ============
-async function updateMainChart(predictionData) {
-    try {
-        if (!charts.overview) return;
-
-        // Récupérer les températures horaires
-        const tempRes = await fetch('http://127.0.0.1:5000/api/hourly-temperature');
-        if (!tempRes.ok) return;
-        
-        const tempData = await tempRes.json();
-        
-        if (!tempData || tempData.length === 0) {
-            console.warn("Pas de données horaires pour le graphique");
-            return;
-        }
-
-        // Préparer les données passées (sécurisées)
-        const pastLabels = tempData.map(e => {
-            try {
-                return new Date(e.timestamp).getHours() + 'h';
-            } catch {
+        // Affichage sécurisé des valeurs numériques
+        function safeDisplay(value, decimals = 1, unit = '') {
+            if (value === null || value === undefined || isNaN(value)) {
                 return 'N/A';
             }
-        });
-        
-        const pastTemps = tempData.map(e => {
-            const temp = e.temperature_avg;
-            return (temp !== null && temp !== undefined && !isNaN(temp)) ? temp : null;
-        });
-
-        // Préparer les prédictions (sécurisées)
-        const predictionTemps = [];
-        const predictionLabels = [];
-        
-        for (let i = 1; i <= 4; i++) {
-            const predValue = predictionData[`h_plus_${i}`];
-            predictionTemps.push((predValue !== null && predValue !== undefined && !isNaN(predValue)) ? predValue : null);
-            predictionLabels.push(`+${i}h`);
+            return `${value.toFixed(decimals)}${unit}`;
         }
 
-        // Mise à jour du graphique
-        charts.overview.data.labels = [...pastLabels, ...predictionLabels];
-        charts.overview.data.datasets[0].data = [...pastTemps, ...predictionTemps];
-        charts.overview.update('none'); // Animation désactivée pour plus de fluidité
+        // Afficher message "pas de prédictions"
+        function displayNoPredictionsMessage() {
+            const forecastItems = document.querySelectorAll('.forecast-item');
 
-    } catch (error) {
-        console.error("Erreur mise à jour graphique principal:", error);
-    }
-}
+            forecastItems.forEach((item, index) => {
+                const span = item.querySelector('span');
+                const strong = item.querySelector('strong');
 
-// ============ MISE À JOUR DES ANALYSES (EXTRÊMES) ============
-async function fetchAndUpdateAnalytics() {
-    try {
-        const res = await fetch('http://127.0.0.1:5000/api/daily-extremes');
-        
-        if (!res.ok) return;
-        
-        const data = await res.json();
+                if (span) span.textContent = `+${index + 1}h`;
+                if (strong) strong.textContent = '--°C';
 
-        if (!data || data.length === 0) return;
+                item.style.opacity = '0.6';
+                item.style.borderLeftColor = '#ff6b6b';
+            });
+        }
 
-        if (charts.extremes) {
-            const labels = data.map(e => {
-                try {
-                    return new Date(e.timestamp).toLocaleDateString('fr-FR', { weekday: 'short' });
-                } catch {
-                    return 'N/A';
+        // Afficher message "pas de données" dans toutes les cartes
+        function displayNoDataMessage() {
+            const cards = [
+                { selector: '.metric-card:nth-child(1)', value: '--°C', change: 'Données indisponibles' },
+                { selector: '.metric-card:nth-child(2)', value: '--%', change: null },
+                { selector: '.metric-card:nth-child(3)', value: '-- km/h', change: 'Direction: --' },
+                { selector: '.metric-card:nth-child(4)', value: '-- hPa', change: null },
+                { selector: '.metric-card:nth-child(5)', value: 'Indisponible', change: 'Système hors ligne' }
+            ];
+
+            cards.forEach(cardInfo => {
+                const card = document.querySelector(cardInfo.selector);
+                if (card) {
+                    const valueEl = card.querySelector('.metric-value');
+                    const changeEl = card.querySelector('.metric-change');
+
+                    if (valueEl) valueEl.textContent = cardInfo.value;
+                    if (changeEl && cardInfo.change) changeEl.textContent = cardInfo.change;
+
+                    // Style discret pour indiquer l'indisponibilité
+                    card.style.opacity = '0.6';
                 }
             });
-            
-            const minTemps = data.map(e => {
-                const temp = e.temperature_min;
-                return (temp !== null && temp !== undefined && !isNaN(temp)) ? temp : 0;
-            });
-            
-            const maxTemps = data.map(e => {
-                const temp = e.temperature_max;
-                return (temp !== null && temp !== undefined && !isNaN(temp)) ? temp : 0;
-            });
-
-            charts.extremes.data.labels = labels;
-            charts.extremes.data.datasets[0].data = minTemps;
-            charts.extremes.data.datasets[1].data = maxTemps;
-            charts.extremes.update('none');
         }
 
-    } catch (error) {
-        console.error("Erreur lors de la récupération des extrêmes:", error);
-    }
-}
+        // Vérifier la fraîcheur des données selon le type
+        function isDataFresh(timestamp, dataType = 'raw') {
+            if (!timestamp) return false;
 
-// ============ MISE À JOUR ROSE DES VENTS ============
-async function fetchAndUpdateWind() {
+            const now = new Date();
+            const dataTime = new Date(timestamp);
+            const ageMinutes = (now - dataTime) / (1000 * 60);
+
+            switch (dataType) {
+                case 'raw': return ageMinutes <= 20;        // Données 10min : max 20min
+                case 'hourly': return ageMinutes <= 75;     // Moyennes horaires : max 1h15
+                case 'predictions': return ageMinutes <= 240; // Prédictions : max 4h
+                case 'daily': return ageMinutes <= 1440;    // Données journalières : max 24h
+                default: return ageMinutes <= 30;
+            }
+        }
+
+        // Convertir degrés en direction
+        function degToDir(deg) {
+            if (deg === null || deg === undefined || isNaN(deg)) return 'N/A';
+            const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+            return dirs[Math.round(deg / 45) % 8];
+        }
+
+        // Mettre à jour l'indicateur de statut
+        function updateStatusIndicator(isFresh, lastUpdate = null) {
+            const statusDot = document.querySelector('.status-dot');
+            const statusText = document.querySelector('.status-indicator span');
+
+            if (statusDot) {
+                if (isFresh) {
+                    statusDot.style.background = '#4caf50';
+                    statusDot.style.boxShadow = '0 0 10px #4caf50';
+                } else {
+                    statusDot.style.background = '#ff6b6b';
+                    statusDot.style.boxShadow = '0 0 10px #ff6b6b';
+                }
+            }
+
+            if (statusText) {
+                if (isFresh && lastUpdate) {
+                    const updateTime = new Date(lastUpdate).toLocaleTimeString('fr-FR', {
+                        hour: '2-digit', minute: '2-digit'
+                    });
+                    statusText.textContent = `EPT - DIC2 GIT (${updateTime})`;
+                } else if (!isFresh) {
+                    statusText.textContent = 'EPT - DIC2 GIT (DONNÉES OBSOLÈTES)';
+                }
+            }
+        }
+        // ============ MISE À JOUR DES MÉTRIQUES ACTUELLES ============
+        async function fetchAndUpdateCurrent() {
+            try {
+                const res = await fetch('http://127.0.0.1:5000/api/latest-raw');
+
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+
+                const data = await res.json();
+                console.log("Données reçues:", data);
+
+                // Vérifier si on a des données
+                if (!data || Object.keys(data).length === 0) {
+                    console.warn("Aucune donnée reçue de l'API");
+                    updateStatusIndicator(false);
+                    return;
+                }
+
+                // Vérifier la fraîcheur AVANT d'afficher
+                const isFresh = isDataFresh(data.timestamp, 'raw');
+                updateStatusIndicator(isFresh, data.timestamp);
+
+                // Si données pas fraîches (>20min), afficher "--" au lieu des valeurs
+                if (!isFresh) {
+                    console.warn(`Données trop anciennes: ${data.data_age_minutes}min`);
+                    displayNoDataMessage();
+                    return;
+                }
+
+                // Mise à jour sécurisée - SÉLECTEURS SPÉCIFIQUES pour éviter les conflits
+
+                // Température (première carte)
+                const tempCard = document.querySelector('.metric-card:nth-child(1)');
+                if (tempCard) {
+                    const tempValue = tempCard.querySelector('.metric-value');
+                    const tempChange = tempCard.querySelector('.metric-change');
+                    if (tempValue) tempValue.textContent = safeDisplay(data.temperature, 1, '°C');
+                    if (tempChange) tempChange.textContent = `Temp ressentie : ${safeDisplay(data.feels_like, 1, '°C')}`;
+                }
+
+                // Humidité (deuxième carte)
+                const humidCard = document.querySelector('.metric-card:nth-child(2)');
+                if (humidCard) {
+                    const humidValue = humidCard.querySelector('.metric-value');
+                    if (humidValue) humidValue.textContent = safeDisplay(data.humidity, 0, '%');
+                }
+
+                // Vent (troisième carte)
+                const windCard = document.querySelector('.metric-card:nth-child(3)');
+                if (windCard) {
+                    const windValue = windCard.querySelector('.metric-value');
+                    const windChange = windCard.querySelector('.metric-change');
+                    if (windValue) windValue.textContent = safeDisplay(data.wind_speed, 1, ' km/h');
+                    if (windChange) windChange.textContent = `Direction: ${degToDir(data.wind_deg)}`;
+                }
+
+                // Pression (quatrième carte)
+                const pressCard = document.querySelector('.metric-card:nth-child(4)');
+                if (pressCard) {
+                    const pressValue = pressCard.querySelector('.metric-value');
+                    if (pressValue) pressValue.textContent = safeDisplay(data.pressure, 0, ' hPa');
+                }
+
+                // Conditions météo (cinquième carte)
+                const weatherCard = document.querySelector('.metric-card:nth-child(5)');
+                if (weatherCard) {
+                    const weatherValue = weatherCard.querySelector('.metric-value');
+                    const weatherChange = weatherCard.querySelector('.metric-change');
+                    if (weatherValue) weatherValue.textContent = data.weather_main || 'N/A';
+                    if (weatherChange) weatherChange.textContent = data.weather_description || 'N/A';
+                }
+
+                // Si données obsolètes, indication visuelle discrète (optionnel)
+                const metricCards = document.querySelectorAll('.metric-card');
+                metricCards.forEach(card => {
+                    if (!isFresh) {
+                        card.style.opacity = '0.8';
+                    } else {
+                        card.style.opacity = '1';
+                    }
+                });
+
+            } catch (error) {
+                console.error("Erreur lors de la récupération des données actuelles:", error);
+                updateStatusIndicator(false);
+
+                // Afficher un message d'erreur discret
+                const firstMetric = document.querySelector('.metric-value');
+                if (firstMetric) {
+                    firstMetric.textContent = 'Erreur API';
+                }
+            }
+        }
+
+        // ============ MISE À JOUR DES PRÉDICTIONS ============
+        async function fetchAndUpdatePredictions() {
+            try {
+                const res = await fetch('http://127.0.0.1:5000/api/predictions');
+
+                if (!res.ok) {
+                    console.warn("Pas de prédictions disponibles");
+                    return;
+                }
+
+                const data = await res.json();
+
+                if (!data || Object.keys(data).length === 0) {
+                    console.warn("Données de prédiction vides");
+                    return;
+                }
+
+                // Vérifier la fraîcheur des prédictions
+                const predictionsFresh = isDataFresh(data.prediction_time, 'predictions');
+
+                // Si prédictions trop anciennes, afficher "--"
+                if (!predictionsFresh) {
+                    console.warn(`Prédictions trop anciennes: ${data.age_minutes}min`);
+                    displayNoPredictionsMessage();
+                    return;
+                }
+
+                const forecastItems = document.querySelectorAll('.forecast-item');
+
+                for (let i = 0; i < 4 && i < forecastItems.length; i++) {
+    const item = forecastItems[i];
+    const span = item.querySelector('span');
+    const strong = item.querySelector('strong');
+
+    if (span && strong) {
+        // ✅ CALCULER À PARTIR DE L'HEURE ACTUELLE
+        const now = new Date();
+        const nextHour = new Date(now);
+        nextHour.setHours(now.getHours() + (i + 1));
+        nextHour.setMinutes(0, 0, 0); // Mettre à l'heure pile
+        
+        // Afficher l'heure future
+        span.textContent = nextHour.getHours().toString().padStart(2, '0') + 'h';
+
+        const predValue = data[`h_plus_${i + 1}`];
+        strong.textContent = safeDisplay(predValue, 1, '°C');
+                        // Indication visuelle si prédictions obsolètes
+                        if (!predictionsFresh) {
+                            item.style.opacity = '0.6';
+                            item.style.borderLeftColor = '#ff6b6b';
+                        } else {
+                            item.style.opacity = '1';
+                            item.style.borderLeftColor = '#4fc3f7';
+                        }
+                    }
+                }
+
+                // Mise à jour du graphique principal avec gestion d'erreurs
+                await updateMainChart(data);
+
+            } catch (error) {
+                console.error("Erreur lors de la récupération des prédictions:", error);
+            }
+        }
+
+        // ============ MISE À JOUR DU GRAPHIQUE PRINCIPAL ============
+        async function updateMainChart(predictionData) {
+            try {
+                if (!charts.overview) return;
+
+                // Récupérer les températures horaires (h-2, h-1, maintenant)
+                const tempRes = await fetch('http://127.0.0.1:5000/api/hourly-temperature');
+                if (!tempRes.ok) {
+                    console.warn("API hourly-temperature indisponible");
+                    displayEmptyChart();
+                    return;
+                }
+
+                const tempData = await tempRes.json();
+
+                if (!tempData || tempData.length === 0) {
+                    console.warn("Pas de données horaires pour le graphique");
+                    displayEmptyChart();
+                    return;
+                }
+
+                // Vérifier fraîcheur des données horaires
+                const latestHourly = tempData[tempData.length - 1];
+                const hourlyFresh = isDataFresh(latestHourly.timestamp, 'hourly');
+
+                if (!hourlyFresh) {
+                    console.warn("Données horaires trop anciennes");
+                    displayEmptyChart();
+                    return;
+                }
+
+               // Préparer les données passées avec les VRAIES heures
+const pastLabels = [];
+const pastTemps = [];
+
+// Prendre les 3 dernières heures maximum
+const recentData = tempData.slice(-2);
+
+recentData.forEach(item => {
     try {
-        const res = await fetch('http://127.0.0.1:5000/api/wind-distribution');
-        
-        if (!res.ok) return;
-        
-        const data = await res.json();
+        const date = new Date(item.timestamp);
+        pastLabels.push(date.getHours() + 'h');
+        const temp = item.temperature_avg;
+        pastTemps.push((temp !== null && temp !== undefined && !isNaN(temp)) ? temp : null);
+    } catch {
+        pastLabels.push('N/A');
+        pastTemps.push(null);
+    }
+});
 
-        if (!data) return;
 
-        if (charts.wind) {
-            const directions = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
-            const windData = directions.map(d => {
-                const value = data[d];
-                return (value !== null && value !== undefined && !isNaN(value)) ? value : 0;
-            });
+                // Ajouter "Maintenant" comme point de référence
+                const now = new Date();
+                pastLabels.push('Maintenant');
+                // // Prendre la dernière température comme "maintenant"
+                pastTemps.push(pastTemps[pastTemps.length - 1]);
 
-            charts.wind.data.datasets[0].data = windData;
-            charts.wind.update('none');
+
+
+                // Préparer les prédictions avec les VRAIES heures futures
+                const predictionTemps = [];
+                const predictionLabels = [];
+
+                // Vérifier cohérence des prédictions avec l'heure actuelle
+                const predictionTime = predictionData.prediction_time ? new Date(predictionData.prediction_time) : new Date();
+                const predictionAge = (new Date() - predictionTime) / (1000 * 60); // en minutes
+
+                if (predictionAge > 240) { // Plus de 4h
+                    console.warn(`Prédictions trop anciennes: ${predictionAge.toFixed(0)}min`);
+                    // Afficher des prédictions vides
+                    for (let i = 1; i <= 4; i++) {
+                        predictionLabels.push(`H+${i}`);
+                        predictionTemps.push(null);
+                    }
+                } else {
+                    // Prédictions valides - calculer les vraies heures
+                    for (let i = 1; i <= 4; i++) {
+                        const futureHour = new Date(now.getTime() + i * 60 * 60 * 1000);
+                        predictionLabels.push(futureHour.getHours() + 'h');
+
+                        const predValue = predictionData[`h_plus_${i}`];
+                        predictionTemps.push((predValue !== null && predValue !== undefined && !isNaN(predValue)) ? predValue : null);
+                    }
+                }
+
+                // Mise à jour du graphique avec vraies données
+                charts.overview.data.labels = [...pastLabels, ...predictionLabels];
+                charts.overview.data.datasets[0].data = [...pastTemps, ...predictionTemps];
+                charts.overview.update('none');
+
+                console.log("Graphique principal mis à jour avec données réelles");
+
+            } catch (error) {
+                console.error("Erreur mise à jour graphique principal:", error);
+                displayEmptyChart();
+            }
         }
 
+        function displayEmptyChart() {
+            if (charts.overview) {
+                charts.overview.data.labels = ['Pas de données'];
+                charts.overview.data.datasets[0].data = [0];
+                charts.overview.update('none');
+            }
+        }
+
+        // ============ MISE À JOUR DES ANALYSES (EXTRÊMES) ============
+        async function fetchAndUpdateAnalytics() {
+            try {
+                const res = await fetch('http://127.0.0.1:5000/api/daily-extremes');
+
+                if (!res.ok) {
+                    console.warn("API daily-extremes indisponible");
+                    displayEmptyExtremesChart();
+                    return;
+                }
+
+                const data = await res.json();
+
+                if (!data || data.length === 0) {
+                    console.warn("Pas de données d'extrêmes");
+                    displayEmptyExtremesChart();
+                    return;
+                }
+
+                // Vérifier qu'on a au moins quelques données récentes
+                const hasRecentData = data.some(item => {
+                    const dayAge = (new Date() - new Date(item.timestamp)) / (1000 * 60 * 60 * 24);
+                    return dayAge <= 7; // Données des 7 derniers jours
+                });
+
+                if (!hasRecentData) {
+                    console.warn("Données d'extrêmes trop anciennes");
+                    displayEmptyExtremesChart();
+                    return;
+                }
+
+                if (charts.extremes) {
+                    const labels = data.map(e => {
+                        try {
+                            return new Date(e.timestamp).toLocaleDateString('fr-FR', { weekday: 'short' });
+                        } catch {
+                            return 'N/A';
+                        }
+                    });
+
+                    const minTemps = data.map(e => {
+                        const temp = e.temperature_min;
+                        return (temp !== null && temp !== undefined && !isNaN(temp)) ? temp : null;
+                    });
+
+                    const maxTemps = data.map(e => {
+                        const temp = e.temperature_max;
+                        return (temp !== null && temp !== undefined && !isNaN(temp)) ? temp : null;
+                    });
+
+                    charts.extremes.data.labels = labels;
+                    charts.extremes.data.datasets[0].data = minTemps;
+                    charts.extremes.data.datasets[1].data = maxTemps;
+                    charts.extremes.update('none');
+
+                    console.log("Graphique extrêmes mis à jour avec données réelles");
+                }
+
+            } catch (error) {
+                console.error("Erreur lors de la récupération des extrêmes:", error);
+                displayEmptyExtremesChart();
+            }
+        }
+
+        function displayEmptyExtremesChart() {
+            if (charts.extremes) {
+                charts.extremes.data.labels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+                charts.extremes.data.datasets[0].data = [null, null, null, null, null, null, null];
+                charts.extremes.data.datasets[1].data = [null, null, null, null, null, null, null];
+                charts.extremes.update('none');
+                console.log("Graphique extrêmes: pas de données récentes");
+            }
+        }
+
+        // ============ MISE À JOUR ROSE DES VENTS ============
+        async function fetchAndUpdateWind() {
+            try {
+                const res = await fetch('http://127.0.0.1:5000/api/wind-distribution');
+
+                if (!res.ok) return;
+
+                const data = await res.json();
+
+                if (!data) return;
+
+                if (charts.wind) {
+                    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+                    const windData = directions.map(d => {
+                        const value = data[d];
+                        return (value !== null && value !== undefined && !isNaN(value)) ? value : 0;
+                    });
+
+                    charts.wind.data.datasets[0].data = windData;
+                    charts.wind.update('none');
+                }
+
+            } catch (error) {
+                console.error("Erreur lors de la récupération des données de vent:", error);
+            }
+        }
+
+     // ============ SYSTÈME DE MONITORING ALERTES SEULEMENT ============
+async function loadMonitoringData() {
+    try {
+        const alertsRes = await fetch('http://127.0.0.1:5000/api/alerts');
+        const alerts = await alertsRes.json();
+        
+        console.log("🔍 Alertes reçues:", alerts);
+        console.log("🔍 Sévérités:", alerts.map(a => a.severity));
+        
+        displaySystemAlerts(alerts);
+        updateAlertStats(alerts);
+        updateComponentsStatus(alerts);
+        
     } catch (error) {
-        console.error("Erreur lors de la récupération des données de vent:", error);
+        console.error("Erreur monitoring:", error);
+        showMonitoringError();
     }
 }
 
+function displaySystemAlerts(alerts) {
+    const container = document.getElementById('system-alerts');
+    if (!container) return;
+
+    if (!alerts || alerts.length === 0) {
+        container.innerHTML = `
+            <div class="alert-item alert-low">
+                <span>✅</span>
+                <div>
+                    <strong>Aucune alerte système</strong><br>
+                    <small>Tous les composants fonctionnent normalement</small>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = alerts.slice(0, 8).map(alert => `
+        <div class="real-alert-item alert-${alert.severity}">
+            <span style="font-size: 1.2rem;">${getSeverityIcon(alert.severity)}</span>
+            <div style="flex: 1;">
+                <strong>${alert.message}</strong><br>
+                <small style="color: #64748b;">
+                    <strong>${alert.component}</strong> • ${getTimeAgo(alert.age_minutes)}
+                    ${alert.type ? ` • ${alert.type}` : ''}
+                </small>
+            </div>
+        </div>
+    `).join('');
+
+    updateErrorLogs(alerts);
+}
+
+function updateErrorLogs(alerts) {
+    console.log("🔍 Debug alertes:", alerts);
+    console.log("🔍 Erreurs trouvées:", alerts.filter(a => a.severity === 'critical' || a.severity === 'high'));
+    
+    const container = document.getElementById('error-logs');
+    if (!container) return;
+
+    const errorAlerts = alerts.filter(a => a.severity === 'critical' || a.severity === 'high');
+    
+    if (errorAlerts.length === 0) {
+        container.innerHTML = `
+            <div style="color: #10b981; text-align: center; padding: 2rem;">
+                ✅ Aucune erreur critique détectée
+            </div>
+        `;
+        return;
+    }
+
+    const logs = errorAlerts.slice(0, 10).map(alert => {
+        const mins = parseFloat(alert.age_minutes) || 0;
+        const timestamp = new Date(Date.now() - mins * 60000).toLocaleTimeString();
+        const level = alert.severity.toUpperCase();
+        return `
+            <div class="log-entry log-${alert.severity}">
+                [${timestamp}] ${level} - ${alert.component}: ${alert.message}
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = logs;
+    container.scrollTop = container.scrollHeight;
+}
+
+function updateAlertStats(alerts) {
+    const stats = {
+        critical: alerts.filter(a => a.severity === 'critical').length,
+        high: alerts.filter(a => a.severity === 'high').length,
+        medium: alerts.filter(a => a.severity === 'medium').length,
+        low: alerts.filter(a => a.severity === 'low').length
+    };
+
+    Object.entries(stats).forEach(([level, count]) => {
+        const el = document.getElementById(`${level}-count`);
+        if (el) el.textContent = count;
+    });
+}
+
+function updateComponentsStatus(alerts) {
+    const container = document.getElementById('components-status');
+    if (!container) return;
+
+    const components = {
+        'Pipeline Spark': getComponentStatus(alerts, ['spark', 'system']),
+        'API Météo': getComponentStatus(alerts, ['api']),
+        'Capteur Local': getComponentStatus(alerts, ['local']),
+        'Base PostgreSQL': getComponentStatus(alerts, ['raw_aggregation', 'hourly_aggregation']),
+        'Prédictions ML': getComponentStatus(alerts, ['predictions'])
+    };
+
+    container.innerHTML = Object.entries(components).map(([name, status]) => `
+        <div class="component-item component-${status.level}">
+            <span><strong>${name}</strong></span>
+            <span class="component-status status-${status.level}">${status.text}</span>
+        </div>
+    `).join('');
+}
+
+function getComponentStatus(alerts, componentNames) {
+    const componentAlerts = alerts.filter(a => 
+        componentNames.some(name => a.component.includes(name))
+    );
+
+    if (componentAlerts.length === 0) {
+        return { level: 'ok', text: 'Opérationnel' };
+    }
+
+    const hasCritical = componentAlerts.some(a => a.severity === 'critical');
+    const hasHigh = componentAlerts.some(a => a.severity === 'high');
+
+    if (hasCritical) return { level: 'error', text: 'Erreur' };
+    if (hasHigh) return { level: 'warning', text: 'Attention' };
+    return { level: 'warning', text: 'Avertissement' };
+}
+
+function showMonitoringError() {
+    document.getElementById('system-alerts').innerHTML = `
+        <div class="real-alert-item alert-critical">
+            <span>❌</span>
+            <div>
+                <strong>Erreur de connexion</strong><br>
+                <small>Impossible de récupérer les alertes système</small>
+            </div>
+        </div>
+    `;
+}
+
+function getSeverityIcon(severity) {
+    return {
+        'low': '🟢',
+        'medium': '🟡', 
+        'high': '🟠',
+        'critical': '🔴'
+    }[severity] || '⚪';
+}
+
+function getTimeAgo(minutes) {
+    const mins = parseFloat(minutes) || 0;
+    if (mins < 1) return 'À l\'instant';
+    if (mins < 60) return `${Math.round(mins)}min`;
+    if (mins < 1440) return `${Math.round(mins/60)}h`;
+    return `${Math.round(mins/1440)}j`;
+}
+
+// Auto-refresh monitoring seulement
+setInterval(loadMonitoringData, 15000);
+
+// Charger quand on ouvre l'onglet monitoring
+document.addEventListener('DOMContentLoaded', function() {
+    const monitoringTab = document.querySelector('.tab-btn[data-tab="monitoring"]');
+    if (monitoringTab) {
+        monitoringTab.addEventListener('click', () => {
+            setTimeout(loadMonitoringData, 300);
+        });
+    }
+});
 // ============ INITIALISATION ============
 console.log("Initialisation du dashboard temps réel...");
-
 // Appels initiaux
 fetchAndUpdateCurrent();
 fetchAndUpdatePredictions();
@@ -1196,12 +1047,10 @@ fetchAndUpdateAnalytics();
 fetchAndUpdateWind();
 
 // Programmation des mises à jour automatiques
-setInterval(fetchAndUpdateCurrent, 2 * 60 * 1000);           // Toutes les 2 minutes
-setInterval(fetchAndUpdatePredictions, 5 * 60 * 1000);       // Toutes les 5 minutes  
-setInterval(fetchAndUpdateWind, 5 * 60 * 1000);              // Toutes les 5 minutes
-setInterval(fetchAndUpdateAnalytics, 15 * 60 * 1000);        // Toutes les 15 minutes
-
-console.log("Dashboard configuré - Mise à jour automatique activée !");
+setInterval(fetchAndUpdateCurrent, 2 * 60 * 1000);
+setInterval(fetchAndUpdatePredictions, 5 * 60 * 1000);
+setInterval(fetchAndUpdateWind, 5 * 60 * 1000);
+setInterval(fetchAndUpdateAnalytics, 15 * 60 * 1000);
     </script>
 </body>
 

@@ -78,20 +78,6 @@ INSERT INTO weather_raw_10min (
     FROM weather_patterns
     ORDER BY timestamp;
 
--- test(affcihage de quelques statistiques)
---  SELECT
---     COUNT(*) as total_records,
---     MIN(timestamp) as first_record,
---     MAX(timestamp) as last_record,
---     AVG(temperature) as avg_temp,
---     AVG(humidity) as avg_humidity,
---     COUNT(DISTINCT weather_main) as weather_conditions
--- FROM weather_raw_10min;
-
--- 
-
-
--- données horaires(aggrégé)
 
 INSERT INTO weather_hourly (
   timestamp, temperature_avg, temperature_min, temperature_max, 

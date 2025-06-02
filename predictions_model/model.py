@@ -89,25 +89,9 @@ def get_prediction_confidence(temperature):
     else:
         return 0.3  # Peu confiant
 
-# Exemple d'utilisation
+# exple dutilisation
 if __name__ == "__main__":
     
-    # Données des 8 dernières heures
-    # temp_data = [18.5, 19.2, 20.1, 21.3, 22.0, 21.8, 21.5, 21.2]
-    # humidity_data = [65, 68, 70, 72, 71, 69, 67, 66]
-    # wind_data = [5, 7, 8, 12, 15, 18, 16, 14]
-    
-    # # Prédiction
-    # predictions = predict_temperature_4h(temp_data, humidity_data, wind_data)
-    # confidence = get_prediction_confidence(temp_data)
-    
-    # print("Prédictions:")
-    # for hour, temp in predictions.items():
-    #     print(f"  {hour}: {temp}°C")
-    
-    # print(f"\nConfiance: {confidence*100:.0f}%")
-
-
     conn = psycopg2.connect(
         dbname="weather_db",
         user="postgres",
@@ -136,7 +120,6 @@ if __name__ == "__main__":
 
     print('temp_data',temp_data)
 
-    # Prédiction
     predictions = predict_temperature_4h(temp_data, humidity_data, wind_data)
     confidence = get_prediction_confidence(temp_data)
 

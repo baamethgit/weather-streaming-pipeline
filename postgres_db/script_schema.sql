@@ -1,7 +1,7 @@
--- Se connecter en tant que postgres -user de base de potsgresql)et créer la base
+
 CREATE DATABASE weather_db;
 
--- Se connecter à weather_db pour créer les tables
+-- Se connecter a weather_db 
 \c weather_db;
 
 
@@ -65,9 +65,16 @@ CREATE TABLE weather_predictions (
 CREATE INDEX idx_weather_predictions_time ON weather_predictions(prediction_time);
 CREATE INDEX idx_weather_predictions_hour ON weather_predictions(DATE_TRUNC('hour', prediction_time));
 
--- dernières préed pour dashboard
--- SELECT h_plus_1, h_plus_2, h_plus_3, h_plus_4, confidence
--- FROM weather_predictions 
--- WHERE DATE_TRUNC('hour', prediction_time) = DATE_TRUNC('hour', NOW())
--- ORDER BY prediction_time DESC 
--- LIMIT 1;
+
+DROP TABLE IF EXISTS weather_alerts CASCADE;
+
+CREATE TABLE weather_alerts (
+    id SERIAL PRIMARY KEY,
+    alert_type VARCHAR(50) NOT NULL,
+    severity VARCHAR(20) NOT NULL,
+    message TEXT NOT NULL,
+    component VARCHAR(50) NOT NULL,
+    metadata JSONB,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    resolved BOOLEAN DEFAULT FALSE
+);

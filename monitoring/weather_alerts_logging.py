@@ -1,213 +1,209 @@
-import logging
-import json
-from datetime import datetime, timedelta
-from pyspark.sql import DataFrame
-from pyspark.sql.functions import (
-    col , max as spark_max, min as spark_min
-)
-from pyspark.sql.types import StructType, StructField, StringType, TimestampType
+# # monitoring/weather_alerts_logging.py
+# import logging
+# import json
+# from datetime import datetime, timedelta
+# from enum import Enum
+# import psycopg2
 
-class AlertType:
-    """Types d'alertes possibles"""
-    DATA_DELAY = "DATA_DELAY"
-    DATA_MISSING = "DATA_MISSING" 
-    QUALITY_ISSUE = "QUALITY_ISSUE"
-    PROCESSING_ERROR = "PROCESSING_ERROR"
-    SYSTEM_HEALTH = "SYSTEM_HEALTH"
+# class AlertType(Enum):
+#     DATA_QUALITY = "data_quality"
+#     SYSTEM_HEALTH = "system_health" 
+#     PROCESSING_ERROR = "processing_error"
 
-class AlertSeverity:
-    """Niveaux de sévérité"""
-    LOW = "LOW"
-    MEDIUM = "MEDIUM"
-    HIGH = "HIGH"
-    CRITICAL = "CRITICAL"
+# class AlertSeverity(Enum):
+#     LOW = "low"
+#     MEDIUM = "medium"
+#     HIGH = "high"
+#     CRITICAL = "critical"
 
-class WeatherAlert:
-    """Classe pour représenter une alerte"""
-    
-    def __init__(self, alert_type, severity, message, source=None, timestamp=None, metadata=None):
-        self.alert_type = alert_type
-        self.severity = severity
-        self.message = message
-        self.source = source or "system"
-        self.timestamp = timestamp or datetime.now()
-        self.metadata = metadata or {}
-        self.id = f"{self.alert_type}_{self.source}_{int(self.timestamp.timestamp())}"
-    
-    def to_spark_row(self):
-        """Convertir en Row compatible avec Spark"""
-        # PAS besoin d'importer Row, on retourne un tuple
+# class AlertManager:
+#     def __init__(self, logger):
+#         self.logger = logger
+#         self.last_data_received = {}
         
-        # Convertir metadata en JSON string si c'est un dict
-        metadata_str = ""
-        if self.metadata:
-            try:
-                metadata_str = json.dumps(self.metadata) if isinstance(self.metadata, dict) else str(self.metadata)
-            except:
-                metadata_str = str(self.metadata)
+#     def create_alert(self, alert_type: AlertType, severity: AlertSeverity, 
+#                     message: str, component: str, metadata: dict = None):
+#         """Créer une alerte - LOG + DB"""
         
-        # Retourner un tuple au lieu d'un Row
-        return (
-            self.id,
-            self.alert_type,
-            self.severity,
-            self.message,
-            self.source,
-            self.timestamp,  # datetime sera correctement sérialisé via le schéma
-            metadata_str
-        )
-
-import json
-import os
-from datetime import datetime
-
-class AlertManager:
-    """Gestionnaire central des alertes - Version fichier sécurisée"""
-    
-    def __init__(self, spark_session, logger):
-        self.spark = spark_session
-        self.logger = logger
-        self.active_alerts = []
+#         # 1. Logger l'alerte avec niveau approprié
+#         log_levels = {
+#             AlertSeverity.LOW: logging.INFO,
+#             AlertSeverity.MEDIUM: logging.WARNING, 
+#             AlertSeverity.HIGH: logging.ERROR,
+#             AlertSeverity.CRITICAL: logging.CRITICAL
+#         }
         
-        # Créer le dossier pour les alertes
-        os.makedirs("./logs", exist_ok=True)
-        
-    def create_alert(self, alert_type, severity, message, source=None, metadata=None):
-        """Créer et enregistrer une nouvelle alerte"""
-        alert = WeatherAlert(alert_type, severity, message, source, metadata=metadata)
-        self.active_alerts.append(alert)
-        
-        # Logger selon la sévérité
-        if severity in [AlertSeverity.HIGH, AlertSeverity.CRITICAL]:
-            self.logger.error(f"[ALERTE {severity}] {message}")
-        elif severity == AlertSeverity.MEDIUM:
-            self.logger.warning(f"[ALERTE {severity}] {message}")
-        else:
-            self.logger.info(f"[ALERTE {severity}] {message}")
-        
-        # Sauvegarder dans un fichier JSON (SÉCURISÉ)
-        self._save_alert_to_file(alert)
-        
-        return alert
-    
-    def _save_alert_to_file(self, alert):
-        """Sauvegarder l'alerte dans un fichier JSON"""
-        try:
-            alert_data = {
-                "id": alert.id,
-                "type": alert.alert_type,
-                "severity": alert.severity,
-                "message": alert.message,
-                "source": alert.source,
-                "timestamp": alert.timestamp.isoformat(),
-                "metadata": alert.metadata
-            }
+#         alert_msg = f"🚨 [{alert_type.value.upper()}] {message} | {component}"
+#         if metadata:
+#             alert_msg += f" | {json.dumps(metadata)}"
             
-            # Ajouter au fichier JSONL (une ligne par alerte)
-            with open("./logs/weather_alerts.jsonl", "a", encoding='utf-8') as f:
-                f.write(json.dumps(alert_data, ensure_ascii=False) + "\n")
+#         self.logger.log(log_levels[severity], alert_msg)
+        
+#         # 2. Sauvegarde en DB pour le dashboard
+#         try:
+#             self._save_alert_to_db(alert_type.value, severity.value, message, component, metadata)
+#         except Exception as e:
+#             self.logger.error(f"Erreur sauvegarde alerte DB: {e}")
+        
+#         # 3. Notification immédiate pour alertes critiques
+#         if severity in [AlertSeverity.HIGH, AlertSeverity.CRITICAL]:
+#             print(f"\n🔥 ALERTE {severity.value.upper()}: {message} [{component}]")
+#             # Ici tu peux ajouter Slack/email plus tard
+    
+#     def _save_alert_to_db(self, alert_type, severity, message, component, metadata):
+#         """Sauvegarder l'alerte en DB"""
+#         try:
+#             conn = psycopg2.connect(
+#                 host="localhost", port=5432, dbname="weather_db",
+#                 user="postgres", password="postgreSQL"
+#             )
+            
+#             with conn.cursor() as cur:
+#                 cur.execute("""
+#                     INSERT INTO weather_alerts 
+#                     (alert_type, severity, message, component, metadata, created_at)
+#                     VALUES (%s, %s, %s, %s, %s, %s)
+#                 """, (alert_type, severity, message, component, 
+#                      json.dumps(metadata) if metadata else None, datetime.now()))
+            
+#             conn.commit()
+#             conn.close()
+            
+#         except Exception as e:
+#             # Si table n'existe pas, la créer
+#             self._create_alerts_table()
+    
+#     def _create_alerts_table(self):
+#         """Créer la table des alertes si elle n'existe pas"""
+#         try:
+#             conn = psycopg2.connect(
+#                 host="localhost", port=5432, dbname="weather_db",
+#                 user="postgres", password="postgreSQL"
+#             )
+            
+#             with conn.cursor() as cur:
+#                 cur.execute("""
+#                     CREATE TABLE IF NOT EXISTS weather_alerts (
+#                         id SERIAL PRIMARY KEY,
+#                         alert_type VARCHAR(50),
+#                         severity VARCHAR(20),
+#                         message TEXT,
+#                         component VARCHAR(50),
+#                         metadata JSONB,
+#                         created_at TIMESTAMP,
+#                         resolved BOOLEAN DEFAULT FALSE
+#                     )
+#                 """)
+            
+#             conn.commit()
+#             conn.close()
+#             print("✅ Table weather_alerts créée")
+            
+#         except Exception as e:
+#             print(f"Erreur création table alerts: {e}")
+    
+#     def check_data_delay(self, source: str, threshold_minutes: int = 15):
+#         """Vérifier si les données sont en retard"""
+#         now = datetime.now()
+#         last_time = self.last_data_received.get(source)
+        
+#         if last_time:
+#             delay_minutes = (now - last_time).total_seconds() / 60
+            
+#             if delay_minutes > threshold_minutes:
+#                 severity = AlertSeverity.CRITICAL if delay_minutes > 30 else AlertSeverity.HIGH
                 
-        except Exception as e:
-            # Log mais ne jamais crasher
-            self.logger.warning(f"Impossible de sauvegarder l'alerte: {str(e)}")
+#                 self.create_alert(
+#                     AlertType.DATA_QUALITY,
+#                     severity,
+#                     f"Données {source} en retard de {delay_minutes:.1f} minutes",
+#                     source,
+#                     {"delay_minutes": delay_minutes}
+#                 )
+#                 return False
+#         else:
+#             self.create_alert(
+#                 AlertType.DATA_QUALITY,
+#                 AlertSeverity.MEDIUM,
+#                 f"Première réception de données {source}",
+#                 source
+#             )
+        
+#         return True
     
-    def get_active_alerts(self, max_age_hours=24):
-        """Récupérer les alertes actives des dernières heures"""
-        cutoff = datetime.now() - timedelta(hours=max_age_hours)
-        return [alert for alert in self.active_alerts if alert.timestamp > cutoff]
-# ==============================================
-# FONCTIONS DE SURVEILLANCE SIMPLIFIÉES
-# ==============================================
-
-def monitor_data_freshness(df, source_name, alert_manager, max_delay_minutes=15):
-    """Surveiller la fraîcheur des données - Version simplifiée"""
-    
-    def check_delays(batch_df, batch_id):
-        try:
-            record_count = batch_df.count()
+#     def validate_data_batch(self, batch_df, source: str):
+#         """Validation rapide d'un batch"""
+#         try:
+#             count = batch_df.count()
             
-            if record_count == 0:
-                alert_manager.create_alert(
-                    AlertType.DATA_MISSING,
-                    AlertSeverity.MEDIUM,  # Réduire à MEDIUM pour éviter les crashes
-                    f"Aucune donnée reçue pour {source_name} dans le batch {batch_id}",
-                    source_name,
-                    {"batch_id": batch_id}
-                )
-                return
+#             if count == 0:
+#                 self.create_alert(
+#                     AlertType.DATA_QUALITY,
+#                     AlertSeverity.MEDIUM,
+#                     f"Batch vide reçu de {source}",
+#                     source
+#                 )
+#                 return
             
-            # Log normal sans calcul complexe pour éviter les erreurs
-            alert_manager.logger.info(f"{source_name} - Batch {batch_id}: {record_count} records traités")
+#             # Marquer réception des données
+#             self.last_data_received[source] = datetime.now()
             
-        except Exception as e:
-            # Log l'erreur mais ne pas crasher
-            alert_manager.logger.error(f"Erreur monitoring {source_name} batch {batch_id}: {str(e)}")
-    
-    return df.writeStream \
-        .foreachBatch(check_delays) \
-        .option("checkpointLocation", f"./checkpoints/monitor_{source_name}") \
-        .trigger(processingTime='2 minutes') \
-        .start()
-
-def monitor_data_quality(df, source_name, alert_manager):
-    """Surveiller la qualité des données - Version simplifiée"""
-    
-    def check_quality(batch_df, batch_id):
-        try:
-            record_count = batch_df.count()
-            
-            if record_count == 0:
-                return
-            
-            # Vérifications basiques sans agrégations complexes
-            null_temp_count = batch_df.filter(col("temperature").isNull()).count()
-            
-            if null_temp_count > 0:
-                ratio = null_temp_count / record_count
-                if ratio > 0.1:  # Plus de 10% de valeurs nulles
-                    alert_manager.create_alert(
-                        AlertType.QUALITY_ISSUE,
-                        AlertSeverity.MEDIUM,
-                        f"Trop de températures nulles {source_name}: {null_temp_count}/{record_count} ({ratio*100:.1f}%)",
-                        source_name,
-                        {"batch_id": batch_id, "null_ratio": ratio}
-                    )
-            else:
-                alert_manager.logger.info(f"{source_name} - Batch {batch_id}: Qualité OK ({record_count} records)")
+#             # Validation simple température
+#             if "temperature" in batch_df.columns:
+#                 temp_rows = batch_df.select("temperature").filter(
+#                     (batch_df.temperature < -40) | (batch_df.temperature > 50)
+#                 ).count()
                 
-        except Exception as e:
-            alert_manager.logger.error(f"Erreur contrôle qualité {source_name} batch {batch_id}: {str(e)}")
-    
-    return df.writeStream \
-        .foreachBatch(check_quality) \
-        .option("checkpointLocation", f"./checkpoints/quality_{source_name}") \
-        .trigger(processingTime='5 minutes') \
-        .start()
+#                 if temp_rows > 0:
+#                     self.create_alert(
+#                         AlertType.DATA_QUALITY,
+#                         AlertSeverity.HIGH,
+#                         f"{temp_rows} températures aberrantes détectées dans {source}",
+#                         source,
+#                         {"aberrant_count": temp_rows, "total_count": count}
+#                     )
+            
+#             # Log succès
+#             self.logger.info(f"✅ Batch {source} validé: {count} lignes")
+            
+#         except Exception as e:
+#             self.create_alert(
+#                 AlertType.PROCESSING_ERROR,
+#                 AlertSeverity.CRITICAL,
+#                 f"Erreur validation batch {source}: {str(e)}",
+#                 source,
+#                 {"error": str(e)}
+#             )
 
-
-def setup_monitoring_for_pipeline(spark, logger, df_api, df_local, df_unified):
-    """Configurer la surveillance complète du pipeline - Version simplifiée"""
+# def setup_monitoring_for_pipeline(spark, logger, df_api, df_local, df_unified):
+#     """Configuration monitoring pour ton pipeline"""
     
-    # Créer le gestionnaire d'alertes
-    alert_manager = AlertManager(spark, logger)
+#     alert_manager = AlertManager(logger)
     
-    # SURVEILLANCE OPTIONNELLE - Peut être commentée pour débugger
-    try:
-        # Surveiller seulement les sources principales
-        monitor_api = monitor_data_freshness(df_api, "api", alert_manager, max_delay_minutes=12)
-        monitor_local = monitor_data_freshness(df_local, "local", alert_manager, max_delay_minutes=15)
-        
-        # Surveiller la qualité (simplifié)
-        quality_api = monitor_data_quality(df_api, "api", alert_manager)
-        
-        monitors = [monitor_api, monitor_local, quality_api]
-        logger.info("Système de surveillance démarré (version simplifiée)")
-        
-    except Exception as e:
-        logger.warning(f"Impossible de démarrer la surveillance: {str(e)}")
-        monitors = []
+#     # Créer la table des alertes
+#     alert_manager._create_alerts_table()
     
-    return {
-        "alert_manager": alert_manager,
-        "monitors": monitors
-    }
+#     # Fonction à utiliser dans tes foreachBatch
+#     def validate_and_alert(batch_df, batch_id, source):
+#         alert_manager.validate_data_batch(batch_df, source)
+#         alert_manager.check_data_delay(source)
+    
+#     # Check périodique (optionnel - à lancer dans un thread)
+#     def periodic_check():
+#         import threading
+#         import time
+        
+#         def check_loop():
+#             while True:
+#                 time.sleep(300)  # Toutes les 5 minutes
+#                 alert_manager.check_data_delay("api", 15)
+#                 alert_manager.check_data_delay("local", 20)
+        
+#         thread = threading.Thread(target=check_loop, daemon=True)
+#         thread.start()
+    
+#     return {
+#         "alert_manager": alert_manager,
+#         "validate_batch": validate_and_alert,
+#         "start_periodic_check": periodic_check
+#     }

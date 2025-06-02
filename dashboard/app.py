@@ -283,6 +283,77 @@ def internal_error(error):
 def not_found(error):
     return jsonify({'error': 'Endpoint non trouvé'}), 404
 
+@app.route('/api/alerts')
+def get_alerts():
+    """Récupérer les alertes récentes"""
+    query = """
+        SELECT alert_type, severity, message, component, created_at,
+               EXTRACT(EPOCH FROM (NOW() - created_at)) / 60 AS age_minutes
+        FROM weather_alerts 
+        WHERE created_at >= NOW() - INTERVAL '24 hours'
+        ORDER BY created_at DESC 
+        LIMIT 20
+    """
+    
+    try:
+        rows = safe_execute_query(query)
+        if not rows:
+            return jsonify([])
+        
+        alerts = []
+        for row in rows:
+            alerts.append({
+                'type': row['alert_type'],
+                'severity': row['severity'],
+                'message': row['message'],
+                'component': row['component'],
+                'age_minutes': round(row['age_minutes'], 1),
+                'timestamp': row['created_at'].isoformat()
+            })
+        
+        return jsonify(alerts)
+        
+    except Exception as e:
+        logger.error(f"Erreur API alerts: {e}")
+        return jsonify([])
+
+@app.route('/api/system-health')
+def system_health():
+    """Status général du système"""
+    try:
+        # Compter les alertes critiques récentes
+        critical_alerts = safe_execute_query("""
+            SELECT COUNT(*) as count FROM weather_alerts 
+            WHERE severity IN ('high', 'critical') 
+            AND created_at >= NOW() - INTERVAL '1 hour'
+        """)
+        
+        # Vérifier la fraîcheur des données
+        last_data = safe_execute_query("""
+            SELECT MAX(timestamp) as last_update,
+                   EXTRACT(EPOCH FROM (NOW() - MAX(timestamp))) / 60 AS age_minutes
+            FROM weather_raw_10min
+        """)
+        
+        critical_count = critical_alerts[0]['count'] if critical_alerts else 0
+        data_age = last_data[0]['age_minutes'] if last_data and last_data[0]['age_minutes'] else 999
+        
+        status = "healthy"
+        if critical_count > 0 or data_age > 20:
+            status = "degraded"
+        if data_age > 60:
+            status = "critical"
+        
+        return jsonify({
+            'status': status,
+            'critical_alerts_last_hour': critical_count,
+            'data_age_minutes': round(data_age, 1),
+            'last_update': last_data[0]['last_update'].isoformat() if last_data and last_data[0]['last_update'] else None
+        })
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
+    
 if __name__ == '__main__':
     logger.info("Démarrage de l'API Flask...")
     app.run(debug=True, host='127.0.0.1', port=5000)
