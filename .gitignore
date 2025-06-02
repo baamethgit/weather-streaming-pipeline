@@ -8,6 +8,6 @@ venv/
 resultats/
 
 arborescence.txt
-logs/
+# logs/
 monitoring/__pycache__/
 predictions_model/__pycache__/
