@@ -1,15 +1,67 @@
+# ============ DÉBUT DU FICHIER - Configuration Windows ============
+import sys
+import os
+import shutil
+
+# Configuration critique Windows AVANT tout import Spark
+os.environ['PYSPARK_PYTHON'] = sys.executable
+os.environ['PYSPARK_DRIVER_PYTHON'] = sys.executable
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
     col, from_json, to_timestamp, lit, avg, min, max, count,
     window, date_format, hour, dayofyear, year
 )
-from pyspark.sql.functions import when, coalesce,first
-
+from pyspark.sql.functions import when, coalesce, first
 from pyspark.sql.types import StructType, StringType, DoubleType, LongType
 from pyspark.sql.functions import to_date
 from predictions_model.predictions import generate_predictions
 
-# Configuration Spark
+# ============ LOGGING SETUP ============
+import logging
+
+def setup_logging():
+    """Configuration du système de logging sans emojis"""
+    logger = logging.getLogger('weather_pipeline')
+    logger.setLevel(logging.INFO)
+    
+    if logger.handlers:
+        logger.handlers.clear()
+    
+    # Créer les répertoires
+    os.makedirs("./logs", exist_ok=True)
+    
+    # Handler pour fichier avec encoding UTF-8
+    file_handler = logging.FileHandler('./logs/weather_pipeline.log', encoding='utf-8')
+    file_handler.setLevel(logging.INFO)
+    
+    # Handler pour console
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    
+    # Format sans emojis
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    file_handler.setFormatter(formatter)
+    console_handler.setFormatter(formatter)
+    
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+    
+    return logger
+
+logger = setup_logging()
+
+# ============ SPARK SESSION ============
+os.makedirs("./checkpoints", exist_ok=True)
+
+# Configuration Spark avec chemins Python corrects
 spark = SparkSession.builder \
     .appName("WeatherAggregationPipeline") \
     .config("spark.jars.packages", 
@@ -17,15 +69,23 @@ spark = SparkSession.builder \
            "org.postgresql:postgresql:42.5.0") \
     .config("spark.executor.memory", "4g") \
     .config("spark.driver.memory", "4g") \
+    .config("spark.pyspark.python", sys.executable) \
+    .config("spark.pyspark.driver.python", sys.executable) \
+    .config("spark.sql.execution.arrow.pyspark.enabled", "false") \
     .getOrCreate()
+
 spark.conf.set("spark.sql.streaming.stateStore.stateSchemaCheck", "false")
-# Réduit le niveau de log global à ERROR
 spark.sparkContext.setLogLevel("ERROR")
 
+# ============ IMPORT DU SYSTÈME D'ALERTES ============
+from monitoring.weather_alerts_logging import (
+    setup_monitoring_for_pipeline, 
+    AlertManager, 
+    AlertType, 
+    AlertSeverity,
+)
 
-# logging.getLogger("py4j").setLevel(logging.ERROR)
-
-# Schémas (identiques aux vôtres)
+# ============ SCHÉMAS (identiques) ============
 api_schema = StructType() \
     .add("timestamp", LongType()) \
     .add("datetime", StringType()) \
@@ -37,26 +97,29 @@ api_schema = StructType() \
     .add("feels_like", DoubleType()) \
     .add("weather_main", StringType()) \
     .add("weather_description", StringType())
+
 local_schema = StructType() \
     .add("temperature", DoubleType()) \
     .add("humidity", DoubleType()) \
     .add("pressure", DoubleType()) \
     .add("timestamp", StringType())
-# Lecture des flux
+
+# ============ LECTURE DES FLUX ============
 df_api_raw = spark.readStream \
     .format("kafka") \
     .option("kafka.bootstrap.servers", "localhost:9092") \
     .option("subscribe", "weather-api") \
-    .option("startingOffsets", "earliest") \
+    .option("startingOffsets", "latest") \
     .load()
+
 df_local_raw = spark.readStream \
     .format("kafka") \
     .option("kafka.bootstrap.servers", "localhost:9092") \
     .option("subscribe", "capteur-iot") \
-    .option("startingOffsets", "earliest") \
+    .option("startingOffsets", "latest") \
     .load()
 
-# Parsing et nettoyage (identique à votre code)
+# ============ PARSING ET NETTOYAGE ============
 df_api = df_api_raw.selectExpr("CAST(value AS STRING)") \
     .select(from_json(col("value"), api_schema).alias("data")) \
     .select(
@@ -75,6 +138,7 @@ df_api = df_api_raw.selectExpr("CAST(value AS STRING)") \
     .filter(col("temperature").isNotNull()) \
     .filter(col("humidity").between(0, 100)) \
     .dropDuplicates(["timestamp", "source"])
+
 df_local = df_local_raw.selectExpr("CAST(value AS STRING)") \
     .select(from_json(col("value"), local_schema).alias("data")) \
     .select(
@@ -82,7 +146,7 @@ df_local = df_local_raw.selectExpr("CAST(value AS STRING)") \
         col("data.temperature"),
         col("data.humidity"),
         col("data.pressure"),
-        lit(None).cast(LongType()).alias("timestamp"),    # ← AJOUTEZ CETTE LIGNE
+        lit(None).cast(LongType()).alias("timestamp"),
         lit(None).cast(DoubleType()).alias("wind_speed"),
         lit(None).cast(DoubleType()).alias("wind_deg"),
         lit(None).cast(DoubleType()).alias("feels_like"),
@@ -93,6 +157,7 @@ df_local = df_local_raw.selectExpr("CAST(value AS STRING)") \
     .filter(col("temperature").isNotNull()) \
     .filter(col("humidity").between(0, 100))
 
+# ============ STANDARDISATION ============
 df_api_std = df_api.select(
     col("event_time"),
     col("temperature"),
@@ -101,8 +166,8 @@ df_api_std = df_api.select(
     col("wind_speed"),
     col("wind_deg"),
     col("feels_like"),
-    col("weather_main"),           # ← AJOUTÉ
-    col("weather_description"),    # ← AJOUTÉ
+    col("weather_main"),
+    col("weather_description"),
     lit("api").alias("source")
 )
 
@@ -111,48 +176,39 @@ df_local_std = df_local.select(
     col("temperature"),
     col("humidity"),
     col("pressure"),
-    lit(None).cast("double").alias("wind_speed"),    # Local n'a pas ces données
-    lit(None).cast("double").alias("wind_deg"),      # Local n'a pas ces données  
-    lit(None).cast("double").alias("feels_like"),    # Local n'a pas ces données
-    lit(None).cast("string").alias("weather_main"),           # ← AJOUTÉ
-    lit(None).cast("string").alias("weather_description"),    # ← AJOUTÉ
+    lit(None).cast("double").alias("wind_speed"),
+    lit(None).cast("double").alias("wind_deg"),
+    lit(None).cast("double").alias("feels_like"),
+    lit(None).cast("string").alias("weather_main"),
+    lit(None).cast("string").alias("weather_description"),
     lit("local").alias("source")
 )
 
-# 2. Union des deux sources
+# ============ UNION ET AGRÉGATIONS ============
 df_unified = df_api_std.union(df_local_std)
 
-# 3. Agrégation avec logique de priorité simple et correcte
+# Agrégation 10 minutes (votre code existant)
 df_raw_10min = df_unified \
     .withWatermark("event_time", "5 minutes") \
     .groupBy(window(col("event_time"), "10 minutes")) \
     .agg(
-        # Température : local en priorité, sinon API
         coalesce(
             avg(when(col("source") == "local", col("temperature"))),
             avg(when(col("source") == "api", col("temperature")))
         ).alias("temperature"),
-        
-        # Humidité : local en priorité, sinon API
         coalesce(
             avg(when(col("source") == "local", col("humidity"))),
             avg(when(col("source") == "api", col("humidity")))
         ).alias("humidity"),
-        
-        # Pression : local en priorité, sinon API
         coalesce(
             avg(when(col("source") == "local", col("pressure"))),
             avg(when(col("source") == "api", col("pressure")))
         ).alias("pressure"),
-        
-        # Wind et feels_like : toujours depuis API
         avg(when(col("source") == "api", col("wind_speed"))).alias("wind_speed"),
         avg(when(col("source") == "api", col("wind_deg"))).alias("wind_deg"),
         avg(when(col("source") == "api", col("feels_like"))).alias("feels_like"),
-        
-        # Weather : toujours depuis API                                        # ← AJOUTÉ
-        first(when(col("source") == "api", col("weather_main"))).alias("weather_main"),           # ← AJOUTÉ
-        first(when(col("source") == "api", col("weather_description"))).alias("weather_description")  # ← AJOUTÉ
+        first(when(col("source") == "api", col("weather_main"))).alias("weather_main"),
+        first(when(col("source") == "api", col("weather_description"))).alias("weather_description")
     ) \
     .select(
         col("window.start").alias("timestamp"),
@@ -166,27 +222,18 @@ df_raw_10min = df_unified \
         col("weather_description")
     )
 
-
-# =========================================
-# moyennes journaliere,par heure
-# ===============================
-
+# Agrégations horaires et journalières (votre code existant)
 df_hourly = df_raw_10min \
     .withWatermark("timestamp", "10 minutes") \
     .groupBy(window(col("timestamp"), "1 hour")) \
     .agg(
-        # Température : moyenne, min, max
         avg("temperature").alias("temperature_avg"),
         min("temperature").alias("temperature_min"),
         max("temperature").alias("temperature_max"),
-        
-        # Autres moyennes
         avg("humidity").alias("humidity_avg"),
         avg("pressure").alias("pressure_avg"),
         avg("wind_speed").alias("wind_speed_avg"),
         avg("feels_like").alias("feels_like_avg"),
-        
-        # Weather_main : le plus fréquent
         first("weather_main", ignorenulls=True).alias("weather_main")
     ) \
     .select(
@@ -201,30 +248,21 @@ df_hourly = df_raw_10min \
         col("weather_main")
     )
 
-# =============================================
-# MOYENNES JOURNALIÈRES
-# =============================================
-
 df_daily = df_raw_10min \
     .withWatermark("timestamp", "1 hour") \
     .groupBy(window(col("timestamp"), "1 day")) \
     .agg(
-        # Température : moyenne, min, max
         avg("temperature").alias("temperature_avg"),
         min("temperature").alias("temperature_min"),
         max("temperature").alias("temperature_max"),
-        
-        # Autres moyennes
         avg("humidity").alias("humidity_avg"),
         avg("pressure").alias("pressure_avg"),
         avg("wind_speed").alias("wind_speed_avg"),
         avg("feels_like").alias("feels_like_avg"),
-        
-        # Weather_main : le plus fréquent
         first("weather_main", ignorenulls=True).alias("weather_main")
     ) \
     .select(
-        col("window.start").cast("date").alias("timestamp"),  # DATE seulement
+        col("window.start").cast("date").alias("timestamp"),
         col("temperature_avg"),
         col("temperature_min"),
         col("temperature_max"),
@@ -235,19 +273,41 @@ df_daily = df_raw_10min \
         col("weather_main")
     )
 
+# ============ INTÉGRATION DU SYSTÈME D'ALERTES (CORRIGÉ) ============
+monitoring_system = setup_monitoring_for_pipeline(
+    spark, logger, df_api, df_local, df_unified
+)
+
+alert_manager = monitoring_system["alert_manager"]
+
+# Alerte de démarrage
+alert_manager.create_alert(
+    AlertType.SYSTEM_HEALTH,
+    AlertSeverity.LOW,
+    "Pipeline météo démarré avec succès",
+    "system",
+    {"version": "1.0", "spark_version": spark.version}
+)
+
+logger.info("Pipeline météo démarré avec surveillance complète")
+
+# ============ FONCTION SAUVEGARDE SIMPLE ============
 def save_to_postgres(df, table_name, mode="append"):
     """Sauvegarde vers PostgreSQL avec foreachBatch"""
     def write_to_postgres(batch_df, batch_id):
-        batch_df.write \
-            .format("jdbc") \
-            .option("url", "jdbc:postgresql://localhost:5432/weather_db") \
-            .option("dbtable", table_name) \
-            .option("user", "postgres") \
-            .option("password", "postgreSQL") \
-            .option("driver", "org.postgresql.Driver") \
-            .mode(mode) \
-            .save()
-        print(f"Batch {batch_id} sauvegardé dans {table_name}")
+        try:
+            batch_df.write \
+                .format("jdbc") \
+                .option("url", "jdbc:postgresql://localhost:5432/weather_db") \
+                .option("dbtable", table_name) \
+                .option("user", "postgres") \
+                .option("password", "postgreSQL") \
+                .option("driver", "org.postgresql.Driver") \
+                .mode(mode) \
+                .save()
+            logger.info(f"Batch {batch_id} sauvegardé dans {table_name}")
+        except Exception as e:
+            logger.error(f"Erreur sauvegarde {table_name}: {str(e)}")
     
     return df.writeStream \
         .foreachBatch(write_to_postgres) \
@@ -255,52 +315,12 @@ def save_to_postgres(df, table_name, mode="append"):
         .trigger(processingTime='2 minutes') \
         .start()
 
-# def save_to_s3_parquet(df, s3_path, partition_cols=None):
-#     """Sauvegarde vers S3 en format Parquet"""
-#     writer = df.writeStream \
-#         .format("parquet") \
-#         .option("path", s3_path) \
-#         .option("checkpointLocation", f"/tmp/checkpoints/{s3_path.split('/')[-1]}") \
-#         .outputMode("append") \
-#         .trigger(processingTime='2 minutes')
-    
-#     if partition_cols:
-#         writer = writer.partitionBy(*partition_cols)
-    
-#     return writer.start()
-
-
-# ==============================================
-# STREAMS DE SAUVEGARDE
-# ==============================================
-
-    # Option 1: PostgreSQL
+# ============ STREAMS DE SAUVEGARDE ============
 query_raw = save_to_postgres(df_raw_10min, "weather_raw_10min")
 query_hourly = save_to_postgres(df_hourly, "weather_hourly")
 query_daily = save_to_postgres(df_daily, "weather_daily")
 
-
-
-# Option 2: S3 (Recommandé)
-# query_raw = save_to_s3_parquet(
-#     df_raw_10min, 
-#     "s3a://your-bucket/weather-data/raw/",
-#     ["source", "aggregation_level"]
-# )
-# query_hourly = save_to_s3_parquet(
-#     df_hourly, 
-#     "s3a://your-bucket/weather-data/hourly/",
-#     ["source", "hour"]
-# )
-# query_daily = save_to_s3_parquet(
-#     df_daily, 
-#     "s3a://your-bucket/weather-data/daily/",
-#     ["source", "date"]
-# )
-
-
-
-# Debug en console (optionnel)
+# Debug en console
 debug_query = df_raw_10min.writeStream \
     .format("console") \
     .outputMode("append") \
@@ -308,25 +328,38 @@ debug_query = df_raw_10min.writeStream \
     .trigger(processingTime='1 minute') \
     .start()
 
-debug_hourly = df_hourly.writeStream \
-    .format("console") \
-    .outputMode("append") \
-    .option("truncate", False) \
-    .trigger(processingTime='5 minutes') \
-    .start()
-
-debug_daily = df_daily.writeStream \
-    .format("console") \
-    .outputMode("append") \
-    .option("truncate", False) \
-    .trigger(processingTime='1 hour') \
-    .start()
-
+# Prédictions
 prediction_stream = df_hourly.writeStream \
     .foreachBatch(generate_predictions) \
     .option("checkpointLocation", "./checkpoints/predictions") \
     .trigger(processingTime='1 hour') \
     .start()
 
-# Attendre la fin des streams
-spark.streams.awaitAnyTermination()
+# ============ EXÉCUTION PRINCIPALE ============
+try:
+    logger.info("Démarrage des streams, appuyez sur Ctrl+C pour arrêter...")
+    spark.streams.awaitAnyTermination()
+
+except KeyboardInterrupt:
+    logger.info("Arrêt demandé par l'utilisateur")
+    alert_manager.create_alert(
+        AlertType.SYSTEM_HEALTH,
+        AlertSeverity.LOW,
+        "Pipeline arrêté par l'utilisateur",
+        "system"
+    )
+
+except Exception as e:
+    logger.error(f"Erreur critique du pipeline: {str(e)}")
+    alert_manager.create_alert(
+        AlertType.PROCESSING_ERROR,
+        AlertSeverity.CRITICAL,
+        f"Erreur critique pipeline: {str(e)}",
+        "system",
+        {"error": str(e)}
+    )
+    raise
+
+finally:
+    logger.info("Nettoyage et fermeture du pipeline")
+    spark.stop()

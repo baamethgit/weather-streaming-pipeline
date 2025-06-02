@@ -6,3 +6,8 @@ venv/
 */resultats/
 /checkpoints
 resultats/
+
+arborescence.txt
+logs/
+monitoring/__pycache__/
+predictions_model/__pycache__/

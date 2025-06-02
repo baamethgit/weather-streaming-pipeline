@@ -1,8 +1,9 @@
 from .model import predict_temperature_4h , get_prediction_confidence
+from pyspark.sql import SparkSession
 
-def generate_predictions(spark_session,batch_df, batch_id):
+def generate_predictions(batch_df, batch_id):
     """Fonction appelée APRÈS sauvegarde de chaque batch horaire"""
-    
+    spark_session = SparkSession.getActiveSession()
     try:
         # Vérifier qu'on a bien des nouvelles données horaires
         if batch_df.count() == 0:

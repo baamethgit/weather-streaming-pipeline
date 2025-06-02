@@ -456,7 +456,7 @@
     <header class="header">
         <h1>🌤️ Dashboard Météo</h1>
         <div class="status-indicator">
-            <!-- <div class="status-dot"></div> -->
+            <div class="status-dot"></div>
             <span>EPT - DIC2 GIT</span>
         </div>
     </header>
@@ -859,10 +859,349 @@
         });
 
         // Simulation de mise à jour temps réel
-        setInterval(() => {
-            const temp = (Math.random() * 6 + 19).toFixed(1);
-            document.querySelector('.metric-value').textContent = temp + '°C';
-        }, 5000);
+        // setInterval(() => {
+        //     const temp = (Math.random() * 6 + 19).toFixed(1);
+        //     document.querySelector('.metric-value').textContent = temp + '°C';
+        // }, 5000);
+
+        // Rafraîchir les valeurs actuelles toutes les 10 min
+// ============ FONCTIONS UTILITAIRES SÉCURISÉES ============
+
+// Affichage sécurisé des valeurs numériques
+function safeDisplay(value, decimals = 1, unit = '') {
+    if (value === null || value === undefined || isNaN(value)) {
+        return 'N/A';
+    }
+    return `${value.toFixed(decimals)}${unit}`;
+}
+
+// Vérifier la fraîcheur des données selon le type
+function isDataFresh(timestamp, dataType = 'raw') {
+    if (!timestamp) return false;
+    
+    const now = new Date();
+    const dataTime = new Date(timestamp);
+    const ageMinutes = (now - dataTime) / (1000 * 60);
+    
+    switch(dataType) {
+        case 'raw': return ageMinutes <= 20;        // Données 10min : max 20min
+        case 'hourly': return ageMinutes <= 90;     // Moyennes horaires : max 1h30
+        case 'predictions': return ageMinutes <= 240; // Prédictions : max 4h
+        case 'daily': return ageMinutes <= 1440;    // Données journalières : max 24h
+        default: return ageMinutes <= 30;
+    }
+}
+
+// Convertir degrés en direction
+function degToDir(deg) {
+    if (deg === null || deg === undefined || isNaN(deg)) return 'N/A';
+    const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+    return dirs[Math.round(deg / 45) % 8];
+}
+
+// Mettre à jour l'indicateur de statut
+function updateStatusIndicator(isFresh, lastUpdate = null) {
+    const statusDot = document.querySelector('.status-dot');
+    const statusText = document.querySelector('.status-indicator span');
+    
+    if (isFresh) {
+        statusDot.style.background = '#4caf50';
+        statusDot.style.boxShadow = '0 0 10px #4caf50';
+        if (lastUpdate) {
+            const updateTime = new Date(lastUpdate).toLocaleTimeString('fr-FR', {
+                hour: '2-digit', minute: '2-digit'
+            });
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' });
+            statusText.textContent = `${dateStr.charAt(0).toUpperCase() + dateStr.slice(1)} (${updateTime})`;
+            // statusText.textContent = `EPT - DIC2 GIT (${updateTime})`;
+        }
+    } else {
+        statusDot.style.background = '#ff6b6b';
+        statusDot.style.boxShadow = '0 0 10px #ff6b6b';
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' });
+        statusText.textContent = `${dateStr.charAt(0).toUpperCase() + dateStr.slice(1)}  (DONNÉES OBSOLÈTES)`;
+        // statusText.textContent = 'EPT - DIC2 GIT (DONNÉES OBSOLÈTES)';
+    }
+}
+
+// ============ MISE À JOUR DES MÉTRIQUES ACTUELLES ============
+async function fetchAndUpdateCurrent() {
+    try {
+        const res = await fetch('http://127.0.0.1:5000/api/latest-raw');
+        
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+        }
+        
+        const data = await res.json();
+        console.log("Données reçues:", data);
+
+        // Vérifier si on a des données
+        if (!data || Object.keys(data).length === 0) {
+            console.warn("Aucune donnée reçue de l'API");
+            updateStatusIndicator(false);
+            return;
+        }
+
+        // Vérifier la fraîcheur
+        const isFresh = isDataFresh(data.timestamp, 'raw');
+        updateStatusIndicator(isFresh, data.timestamp);
+
+        // Mise à jour sécurisée des métriques
+        const metricValues = document.querySelectorAll('.metric-value');
+        const metricChanges = document.querySelectorAll('.metric-change');
+
+        // Température
+        metricValues[0].textContent = safeDisplay(data.temperature, 1, '°C');
+        if (metricChanges[0]) {
+            metricChanges[0].textContent = `Temp ressentie : ${safeDisplay(data.feels_like, 1, '°C')}`;
+        }
+
+        // Humidité
+        if (metricValues[1]) {
+            metricValues[1].textContent = safeDisplay(data.humidity, 0, '%');
+        }
+
+        // Vent
+        if (metricValues[2]) {
+            metricValues[2].textContent = safeDisplay(data.wind_speed, 1, ' km/h');
+        }
+        if (metricChanges[1]) {
+            metricChanges[1].textContent = `Direction: ${degToDir(data.wind_deg)}`;
+        }
+
+        // Pression
+        if (metricValues[3]) {
+            metricValues[3].textContent = safeDisplay(data.pressure, 0, ' hPa');
+        }
+
+        // Conditions météo
+        if (metricValues[4]) {
+            metricValues[4].textContent = data.weather_main || 'N/A';
+        }
+        if (metricChanges[2]) {
+            metricChanges[2].textContent = data.weather_description || 'N/A';
+        }
+
+        // Si données obsolètes, ajouter une indication visuelle discrète
+        const metricCards = document.querySelectorAll('.metric-card');
+        metricCards.forEach(card => {
+            if (!isFresh) {
+                card.style.opacity = '0.7';
+                card.style.border = '1px solid #ff6b6b';
+            } else {
+                card.style.opacity = '1';
+                card.style.border = '1px solid rgba(79, 195, 247, 0.2)';
+            }
+        });
+
+    } catch (error) {
+        console.error("Erreur lors de la récupération des données actuelles:", error);
+        updateStatusIndicator(false);
+        
+        // Afficher un message d'erreur discret
+        const firstMetric = document.querySelector('.metric-value');
+        if (firstMetric) {
+            firstMetric.textContent = 'Erreur API';
+        }
+    }
+}
+
+// ============ MISE À JOUR DES PRÉDICTIONS ============
+async function fetchAndUpdatePredictions() {
+    try {
+        const res = await fetch('http://127.0.0.1:5000/api/predictions');
+        
+        if (!res.ok) {
+            console.warn("Pas de prédictions disponibles");
+            return;
+        }
+        
+        const data = await res.json();
+
+        if (!data || Object.keys(data).length === 0) {
+            console.warn("Données de prédiction vides");
+            return;
+        }
+
+        // Vérifier la fraîcheur des prédictions
+        const predictionsFresh = isDataFresh(data.prediction_time, 'predictions');
+        
+        const forecastItems = document.querySelectorAll('.forecast-item');
+        
+        for (let i = 0; i < 4 && i < forecastItems.length; i++) {
+            const item = forecastItems[i];
+            const span = item.querySelector('span');
+            const strong = item.querySelector('strong');
+            
+            if (span && strong) {
+                // Calculer l'heure prédite
+                const baseTime = data.prediction_time ? new Date(data.prediction_time) : new Date();
+                const futureHour = new Date(baseTime.getTime() + (i + 1) * 60 * 60 * 1000);
+                
+                span.textContent = futureHour.toLocaleTimeString('fr-FR', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                const predValue = data[`h_plus_${i + 1}`];
+                strong.textContent = safeDisplay(predValue, 1, '°C');
+                
+                // Indication visuelle si prédictions obsolètes
+                if (!predictionsFresh) {
+                    item.style.opacity = '0.6';
+                    item.style.borderLeftColor = '#ff6b6b';
+                } else {
+                    item.style.opacity = '1';
+                    item.style.borderLeftColor = '#4fc3f7';
+                }
+            }
+        }
+
+        // Mise à jour du graphique principal avec gestion d'erreurs
+        await updateMainChart(data);
+
+    } catch (error) {
+        console.error("Erreur lors de la récupération des prédictions:", error);
+    }
+}
+
+// ============ MISE À JOUR DU GRAPHIQUE PRINCIPAL ============
+async function updateMainChart(predictionData) {
+    try {
+        if (!charts.overview) return;
+
+        // Récupérer les températures horaires
+        const tempRes = await fetch('http://127.0.0.1:5000/api/hourly-temperature');
+        if (!tempRes.ok) return;
+        
+        const tempData = await tempRes.json();
+        
+        if (!tempData || tempData.length === 0) {
+            console.warn("Pas de données horaires pour le graphique");
+            return;
+        }
+
+        // Préparer les données passées (sécurisées)
+        const pastLabels = tempData.map(e => {
+            try {
+                return new Date(e.timestamp).getHours() + 'h';
+            } catch {
+                return 'N/A';
+            }
+        });
+        
+        const pastTemps = tempData.map(e => {
+            const temp = e.temperature_avg;
+            return (temp !== null && temp !== undefined && !isNaN(temp)) ? temp : null;
+        });
+
+        // Préparer les prédictions (sécurisées)
+        const predictionTemps = [];
+        const predictionLabels = [];
+        
+        for (let i = 1; i <= 4; i++) {
+            const predValue = predictionData[`h_plus_${i}`];
+            predictionTemps.push((predValue !== null && predValue !== undefined && !isNaN(predValue)) ? predValue : null);
+            predictionLabels.push(`+${i}h`);
+        }
+
+        // Mise à jour du graphique
+        charts.overview.data.labels = [...pastLabels, ...predictionLabels];
+        charts.overview.data.datasets[0].data = [...pastTemps, ...predictionTemps];
+        charts.overview.update('none'); // Animation désactivée pour plus de fluidité
+
+    } catch (error) {
+        console.error("Erreur mise à jour graphique principal:", error);
+    }
+}
+
+// ============ MISE À JOUR DES ANALYSES (EXTRÊMES) ============
+async function fetchAndUpdateAnalytics() {
+    try {
+        const res = await fetch('http://127.0.0.1:5000/api/daily-extremes');
+        
+        if (!res.ok) return;
+        
+        const data = await res.json();
+
+        if (!data || data.length === 0) return;
+
+        if (charts.extremes) {
+            const labels = data.map(e => {
+                try {
+                    return new Date(e.timestamp).toLocaleDateString('fr-FR', { weekday: 'short' });
+                } catch {
+                    return 'N/A';
+                }
+            });
+            
+            const minTemps = data.map(e => {
+                const temp = e.temperature_min;
+                return (temp !== null && temp !== undefined && !isNaN(temp)) ? temp : 0;
+            });
+            
+            const maxTemps = data.map(e => {
+                const temp = e.temperature_max;
+                return (temp !== null && temp !== undefined && !isNaN(temp)) ? temp : 0;
+            });
+
+            charts.extremes.data.labels = labels;
+            charts.extremes.data.datasets[0].data = minTemps;
+            charts.extremes.data.datasets[1].data = maxTemps;
+            charts.extremes.update('none');
+        }
+
+    } catch (error) {
+        console.error("Erreur lors de la récupération des extrêmes:", error);
+    }
+}
+
+// ============ MISE À JOUR ROSE DES VENTS ============
+async function fetchAndUpdateWind() {
+    try {
+        const res = await fetch('http://127.0.0.1:5000/api/wind-distribution');
+        
+        if (!res.ok) return;
+        
+        const data = await res.json();
+
+        if (!data) return;
+
+        if (charts.wind) {
+            const directions = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+            const windData = directions.map(d => {
+                const value = data[d];
+                return (value !== null && value !== undefined && !isNaN(value)) ? value : 0;
+            });
+
+            charts.wind.data.datasets[0].data = windData;
+            charts.wind.update('none');
+        }
+
+    } catch (error) {
+        console.error("Erreur lors de la récupération des données de vent:", error);
+    }
+}
+
+// ============ INITIALISATION ============
+console.log("Initialisation du dashboard temps réel...");
+
+// Appels initiaux
+fetchAndUpdateCurrent();
+fetchAndUpdatePredictions();
+fetchAndUpdateAnalytics();
+fetchAndUpdateWind();
+
+// Programmation des mises à jour automatiques
+setInterval(fetchAndUpdateCurrent, 2 * 60 * 1000);           // Toutes les 2 minutes
+setInterval(fetchAndUpdatePredictions, 5 * 60 * 1000);       // Toutes les 5 minutes  
+setInterval(fetchAndUpdateWind, 5 * 60 * 1000);              // Toutes les 5 minutes
+setInterval(fetchAndUpdateAnalytics, 15 * 60 * 1000);        // Toutes les 15 minutes
+
+console.log("Dashboard configuré - Mise à jour automatique activée !");
     </script>
 </body>
 
