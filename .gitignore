@@ -8,7 +8,7 @@ venv/
 resultats/
 .env
 ./consumers/kafka_consumer_avec_S3.py
-arborescence.txt
+
 # logs/
 monitoring/__pycache__/
 predictions_model/__pycache__/

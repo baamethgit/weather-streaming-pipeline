@@ -53,7 +53,7 @@ cd weather-streaming-pipeline
 ### 3. installer les dépendances
 ```bash
 python -m venv venv
-
+venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
