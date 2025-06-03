@@ -544,10 +544,6 @@ def start_periodic_monitoring():
     monitoring_thread.start()
     logger.info("Monitoring périodique démarré")
 
-# les streams pour save les données
-query_raw = save_to_postgres_monitored(df_raw_10min, "weather_raw_10min", "raw_aggregation")
-query_hourly = save_to_postgres_monitored(df_hourly, "weather_hourly", "hourly_aggregation")
-query_daily = save_to_postgres_monitored(df_daily, "weather_daily", "daily_aggregation")
 
 query_raw = save_to_postgres_monitored(df_raw_10min, "weather_raw_10min", "raw_aggregation", '10 minutes')
 query_hourly = save_to_postgres_monitored(df_hourly, "weather_hourly", "hourly_aggregation",'1 hour')
