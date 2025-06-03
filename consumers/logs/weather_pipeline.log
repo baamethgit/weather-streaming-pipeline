@@ -1,0 +1,14 @@
+2025-06-03 21:27:11,002 - weather_pipeline - ERROR - Erreur création table alerts: connection to server at "localhost" (::1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+2025-06-03 21:27:11,002 - weather_pipeline - INFO -  [SYSTEM_HEALTH] Pipeline météo démarré avec succès | system | {"version": "1.0", "spark_version": "3.5.5"}
+2025-06-03 21:27:15,088 - weather_pipeline - ERROR - Erreur sauvegarde alerte: connection to server at "localhost" (::1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+2025-06-03 21:27:15,089 - weather_pipeline - INFO - Pipeline météo démarré avec surveillance complète
+2025-06-03 21:27:22,085 - weather_pipeline - INFO - Monitoring périodique démarré
+2025-06-03 21:27:22,087 - weather_pipeline - INFO - Démarrage des streams, appuyez sur Ctrl+C pour arrêter...

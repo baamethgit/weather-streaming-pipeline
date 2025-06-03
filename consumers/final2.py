@@ -1,9 +1,15 @@
-# ============ DÉBUT DU FICHIER - Configuration Windows ============
 import sys
 import os
-import shutil
 
-# Configuration critique Windows AVANT tout import Spark
+
+import json
+from datetime import datetime, timedelta
+from enum import Enum
+import psycopg2
+import threading
+import time
+
+# Configuration critique Windows 
 os.environ['PYSPARK_PYTHON'] = sys.executable
 os.environ['PYSPARK_DRIVER_PYTHON'] = sys.executable
 os.environ['PYTHONIOENCODING'] = 'utf-8'
@@ -14,15 +20,13 @@ if project_root not in sys.path:
 
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
-    col, from_json, to_timestamp, lit, avg, min, max, count,
-    window, date_format, hour, dayofyear, year
+    col, from_json, to_timestamp, lit, avg, min, max,
+    window
 )
+
 from pyspark.sql.functions import when, coalesce, first
 from pyspark.sql.types import StructType, StringType, DoubleType, LongType
-from pyspark.sql.functions import to_date
 from predictions_model.predictions import generate_predictions
-
-# ============ LOGGING SETUP ============
 import logging
 
 def setup_logging():
@@ -58,10 +62,10 @@ def setup_logging():
 
 logger = setup_logging()
 
-# ============ SPARK SESSION ============
+
+
 os.makedirs("./checkpoints", exist_ok=True)
 
-# Configuration Spark avec chemins Python corrects
 spark = SparkSession.builder \
     .appName("WeatherAggregationPipeline") \
     .config("spark.jars.packages", 
@@ -77,13 +81,6 @@ spark = SparkSession.builder \
 spark.conf.set("spark.sql.streaming.stateStore.stateSchemaCheck", "false")
 spark.sparkContext.setLogLevel("ERROR")
 
-# ============ SYSTÈME DE SURVEILLANCE SIMPLIFIÉ ============
-import json
-from datetime import datetime, timedelta
-from enum import Enum
-import psycopg2
-import threading
-import time
 
 class AlertType(Enum):
     DATA_QUALITY = "data_quality"
@@ -269,7 +266,7 @@ class AlertManager:
                 {"error": str(e), "batch_id": batch_id}
             )
 
-# ============ INITIALISATION DU SYSTÈME D'ALERTES ============
+#  initialiser le systeme d'alertes
 alert_manager = AlertManager(logger)
 
 # Alerte de démarrage
@@ -283,7 +280,7 @@ alert_manager.create_alert(
 
 logger.info("Pipeline météo démarré avec surveillance complète")
 
-# ============ SCHÉMAS (identiques) ============
+# schémas
 api_schema = StructType() \
     .add("timestamp", LongType()) \
     .add("datetime", StringType()) \
@@ -302,7 +299,7 @@ local_schema = StructType() \
     .add("pressure", DoubleType()) \
     .add("timestamp", StringType())
 
-# ============ LECTURE DES FLUX ============
+# lire les flux
 df_api_raw = spark.readStream \
     .format("kafka") \
     .option("kafka.bootstrap.servers", "localhost:9092") \
@@ -317,7 +314,7 @@ df_local_raw = spark.readStream \
     .option("startingOffsets", "latest") \
     .load()
 
-# ============ PARSING ET NETTOYAGE ============
+#parser et nettoyer données
 df_api = df_api_raw.selectExpr("CAST(value AS STRING)") \
     .select(from_json(col("value"), api_schema).alias("data")) \
     .select(
@@ -355,7 +352,7 @@ df_local = df_local_raw.selectExpr("CAST(value AS STRING)") \
     .filter(col("temperature").isNotNull()) \
     .filter(col("humidity").between(0, 100))
 
-# ============ STANDARDISATION ============
+# standardisation
 df_api_std = df_api.select(
     col("event_time"),
     col("temperature"),
@@ -382,7 +379,7 @@ df_local_std = df_local.select(
     lit("local").alias("source")
 )
 
-# ============ UNION ET AGRÉGATIONS ============
+# union et aggregation
 df_unified = df_api_std.union(df_local_std)
 
 # Agrégation 10 minutes
@@ -471,8 +468,8 @@ df_daily = df_raw_10min \
         col("weather_main")
     )
 
-# ============ FONCTION SAUVEGARDE AVEC SURVEILLANCE ============
-def save_to_postgres_monitored(df, table_name, source_name, mode="append"):
+# fonction pour save dans la bd (avec surveillance)
+def save_to_postgres_monitored(df, table_name, source_name, mode="append",trigger_time='2 minutes'):
     """Sauvegarde vers PostgreSQL avec surveillance intégrée"""
     def write_to_postgres(batch_df, batch_id):
         try:
@@ -506,10 +503,10 @@ def save_to_postgres_monitored(df, table_name, source_name, mode="append"):
     return df.writeStream \
         .foreachBatch(write_to_postgres) \
         .option("checkpointLocation", f"./checkpoints/{table_name}") \
-        .trigger(processingTime='2 minutes') \
+        .trigger(processingTime=trigger_time) \
         .start()
 
-# ============ MONITORING PÉRIODIQUE ============
+# process de monitoring
 def start_periodic_monitoring():
     """Surveillance périodique en arrière-plan"""
     def monitoring_loop():
@@ -547,12 +544,15 @@ def start_periodic_monitoring():
     monitoring_thread.start()
     logger.info("Monitoring périodique démarré")
 
-# ============ STREAMS DE SAUVEGARDE AVEC SURVEILLANCE ============
+# les streams pour save les données
 query_raw = save_to_postgres_monitored(df_raw_10min, "weather_raw_10min", "raw_aggregation")
 query_hourly = save_to_postgres_monitored(df_hourly, "weather_hourly", "hourly_aggregation")
 query_daily = save_to_postgres_monitored(df_daily, "weather_daily", "daily_aggregation")
 
-# Debug en console
+query_raw = save_to_postgres_monitored(df_raw_10min, "weather_raw_10min", "raw_aggregation", '10 minutes')
+query_hourly = save_to_postgres_monitored(df_hourly, "weather_hourly", "hourly_aggregation",'1 hour')
+query_daily = save_to_postgres_monitored(df_daily, "weather_daily", "daily_aggregation", '24 hours')
+#  console
 debug_query = df_raw_10min.writeStream \
     .format("console") \
     .outputMode("append") \
@@ -561,6 +561,7 @@ debug_query = df_raw_10min.writeStream \
     .start()
 
 # Prédictions avec surveillance
+
 def generate_predictions_monitored(batch_df, batch_id):
     """Prédictions avec alertes en cas d'erreur"""
     try:
@@ -581,12 +582,12 @@ prediction_stream = df_hourly.writeStream \
     .trigger(processingTime='1 hour') \
     .start()
 
-# ============ DÉMARRAGE DU MONITORING ============
+#  DÉMARRAGE DU MONITORING 
 start_periodic_monitoring()
 
-# ============ EXÉCUTION PRINCIPALE ============
+# main
 try:
-    logger.info("Démarrage des streams, appuyez sur Ctrl+C pour arrêter...")
+    logger.info("Démarrage des streams, appuyez sur Ctrl+C pour arrêter")
     spark.streams.awaitAnyTermination()
 
 except KeyboardInterrupt:

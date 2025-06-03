@@ -22,6 +22,8 @@ weather-pipeline/
 │   └── iot_device.py           # Producteur capteur IoT simulé
 ├── consumers/
 │   └── final2.py               # Pipeline Spark principal
+    └── logs/
+        └── weather_pipeline.log    # Logs du pipeline
 ├── predictions_model/
 │   ├── model.py                # Algorithme de prédiction
 │   └── predictions.py          # Intégration Spark
@@ -30,8 +32,7 @@ weather-pipeline/
 │   ├── dashboard.html          # Interface web
 │   ├── script.js               # Logique frontend
 │   └── style.css               # Styles
-└── logs/
-    └── weather_pipeline.log    # Logs du pipeline
+
 ```
 
 ---
