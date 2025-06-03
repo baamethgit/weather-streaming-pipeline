@@ -45,8 +45,8 @@ weather-pipeline/
 
 ### 2. Cloner le projet 
 ```bash
-git clone <repo-url>
-cd weather-pipeline
+git clone https://github.com/baamethgit/weather-streaming-pipeline.git
+cd weather-streaming-pipeline
 
 ```
 
