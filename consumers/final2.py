@@ -497,11 +497,11 @@ def save_to_postgres_monitored(df, table_name, source_name, mode="append"):
             alert_manager.create_alert(
                 AlertType.PROCESSING_ERROR,
                 AlertSeverity.CRITICAL,
-                f"Erreur sauvegarde batch {batch_id} dans {table_name}: {self._clean_error_message(e)}",
+                f"Erreur sauvegarde batch {batch_id} dans {table_name}: {str(e)}",
                 table_name,
                 {"batch_id": batch_id, "error": str(e)}
             )
-            logger.error(f"Erreur sauvegarde {table_name}: {self._clean_error_message(e)}")
+            logger.error(f"Erreur sauvegarde {table_name}: {str(e)}")
     
     return df.writeStream \
         .foreachBatch(write_to_postgres) \
@@ -537,7 +537,7 @@ def start_periodic_monitoring():
                 alert_manager.create_alert(
                     AlertType.SYSTEM_HEALTH,
                     AlertSeverity.HIGH,
-                    f"Erreur monitoring périodique: {self._clean_error_message(e)}",
+                    f"Erreur monitoring périodique: {str(e)}",
                     "monitoring"
                 )
                 time.sleep(60)  # Attendre plus longtemps en cas d'erreur
@@ -570,7 +570,7 @@ def generate_predictions_monitored(batch_df, batch_id):
         alert_manager.create_alert(
             AlertType.PROCESSING_ERROR,
             AlertSeverity.HIGH,
-            f"Erreur génération prédictions batch {batch_id}: {self._clean_error_message(e)}",
+            f"Erreur génération prédictions batch {batch_id}: {str(e)}",
             "predictions",
             {"batch_id": batch_id, "error": str(e)}
         )
@@ -599,11 +599,11 @@ except KeyboardInterrupt:
     )
 
 except Exception as e:
-    logger.error(f" Erreur critique du pipeline: {self._clean_error_message(e)}")
+    logger.error(f" Erreur critique du pipeline: {str(e)}")
     alert_manager.create_alert(
         AlertType.SYSTEM_HEALTH,
         AlertSeverity.CRITICAL,
-        f"Erreur critique pipeline: {self._clean_error_message(e)}",
+        f"Erreur critique pipeline: {str(e)}",
         "system",
         {"error": str(e)}
     )

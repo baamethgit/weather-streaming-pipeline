@@ -10,7 +10,6 @@ API_KEY = "baad5febfdfcbc8b2f1283e57a6f49d2"
 LAT, LON = 14.7908, -16.9382  # Thies
 KAFKA_TOPIC = "weather-api"
 KAFKA_BROKER = "localhost:9092"
-KAFKA_TOPIC_ALERTS = "weather-alerts"
 
 
 producer = KafkaProducer(
@@ -46,20 +45,6 @@ def fetch_and_send_weather():
         print(100*"#")
         print(f"[{payload['datetime']}] Sent to Kafka: {payload}")
         print(100*"#")
-        for alert in data.get("alerts", []):
-            alert_payload = {
-                "datetime": datetime.datetime.fromtimestamp(alert.get("start")).isoformat(),
-                "event": alert.get("event"),
-                "start": alert.get("start"),
-                "end": alert.get("end"),
-                "sender": alert.get("sender_name"),
-                "description": alert.get("description"),
-                "tags": alert.get("tags", []),
-                "location": "LOCATION_TAG"  # genre "paris"
-            }
-            print(100*"#")
-            producer.send(KAFKA_TOPIC_ALERTS, value=alert_payload)
-            print(f"=============[ALERT] Sent to Kafka: {alert_payload}==========")
 
 
 

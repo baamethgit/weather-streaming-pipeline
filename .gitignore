@@ -6,7 +6,8 @@ venv/
 */resultats/
 /checkpoints
 resultats/
-
+.env
+consumers/kafka_consumer_avec_S3.py
 arborescence.txt
 # logs/
 monitoring/__pycache__/

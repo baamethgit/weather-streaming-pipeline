@@ -1,12 +1,11 @@
--- Nettoyer les anciennes données (optionnel)
 DELETE FROM weather_predictions;
 DELETE FROM weather_daily;
 DELETE FROM weather_hourly;
 DELETE FROM weather_raw_10min;
 
--- ============================================================================
+
 -- 1. DONNÉES BRUTES TOUTES LES 10 MINUTES (48 dernières heures)
--- ============================================================================
+
 
 INSERT INTO weather_raw_10min (
     timestamp, temperature, humidity, pressure, wind_speed, 
@@ -24,37 +23,33 @@ weather_data AS (
         EXTRACT(hour FROM ts) as hour_of_day,
         EXTRACT(day FROM ts - INTERVAL '48 hours') as day_offset,
         
-        -- TEMPÉRATURES RÉALISTES POUR THIÈS EN JUIN
-        -- Minimum nocturne: 24°C, Maximum diurne: 36°C
-        -- Cycle jour/nuit + variations aléatoires + tendance légère
+    
         ROUND(
             (30 + 6 * SIN(2 * PI() * EXTRACT(hour FROM ts) / 24 - PI()/2) + 
              2 * SIN(2 * PI() * seq / 144) + 
              (RANDOM() - 0.5) * 3 +
-             (seq / 288.0) * 1  -- Légère hausse sur 48h
+             (seq / 288.0) * 1 
             )::numeric, 1
         ) as temperature,
         
-        -- HUMIDITÉ ADAPTÉE AU CLIMAT SÉNÉGALAIS
-        -- Plus élevée la nuit (70-85%), plus basse le jour (45-60%)
+      
         ROUND(
             (67 - 18 * SIN(2 * PI() * EXTRACT(hour FROM ts) / 24 - PI()/2) + 
              5 * SIN(2 * PI() * seq / 200) +
              (RANDOM() - 0.5) * 12)::numeric, 1
         ) as humidity,
         
-        -- PRESSION ATMOSPHÉRIQUE STABLE (climat tropical)
         ROUND(
             (1013 + 3 * SIN(2 * PI() * seq / 600) + 
              (RANDOM() - 0.5) * 4)::numeric, 1
         ) as pressure,
         
-        -- VENT - ALIZÉS DU NORD-EST (dominant en juin)
+    
         ROUND(
             (8 + 7 * RANDOM() + 3 * SIN(2 * PI() * seq / 180))::numeric, 1
         ) as wind_speed,
         
-        -- DIRECTION VENT - Principalement NE à E (30-90°)
+        
         (30 + (RANDOM() * 60) + 10 * SIN(2 * PI() * seq / 100))::int as wind_deg
         
     FROM time_series
@@ -67,7 +62,7 @@ SELECT
     LEAST(GREATEST(wind_speed, 2), 25) as wind_speed,    -- Limites vent
     wind_deg % 360 as wind_deg,
     
-    -- TEMPÉRATURE RESSENTIE (indice de chaleur tropical)
+    -- TEMPÉRATURE RESSENTIE 
     ROUND(
         (temperature + 0.3 * (humidity/100) * (temperature - 15) + 1.5)::numeric, 1
     ) as feels_like,
@@ -96,9 +91,7 @@ SELECT
 FROM weather_data
 ORDER BY timestamp;
 
--- ============================================================================
--- 2. AGRÉGATION DONNÉES HORAIRES
--- ============================================================================
+-- 2 AGRÉGATION DONNÉES HORAIRES
 
 INSERT INTO weather_hourly (
     timestamp, temperature_avg, temperature_min, temperature_max, 
@@ -127,9 +120,9 @@ ON CONFLICT (timestamp) DO UPDATE SET
     feels_like_avg = EXCLUDED.feels_like_avg,
     weather_main = EXCLUDED.weather_main;
 
--- ============================================================================
+
 -- 3. AGRÉGATION DONNÉES JOURNALIÈRES
--- ============================================================================
+
 
 INSERT INTO weather_daily (
     timestamp, temperature_avg, temperature_min, temperature_max, 
@@ -158,9 +151,9 @@ ON CONFLICT (timestamp) DO UPDATE SET
     feels_like_avg = EXCLUDED.feels_like_avg,
     weather_main = EXCLUDED.weather_main;
 
--- ============================================================================
+
 -- 4. PRÉDICTIONS MÉTÉO (4 heures suivantes)
--- ============================================================================
+
 
 -- Nettoyer anciennes prédictions
 DELETE FROM weather_predictions WHERE prediction_time < NOW() - INTERVAL '24 hours';
@@ -236,9 +229,7 @@ SELECT
     
 FROM prediction_base;
 
--- ============================================================================
--- 5. VÉRIFICATION DES DONNÉES GÉNÉRÉES
--- ============================================================================
+
 
 -- Statistiques générales
 SELECT 
