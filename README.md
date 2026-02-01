@@ -11,6 +11,21 @@ Pipeline Big Data qui collecte des données météo depuis deux sources (API Ope
   <img src="https://www.chartjs.org/media/logo-title.svg" height="48"/>
 </p>
 
+## Documents du projet
+
+<p>
+  <a href="./rapport.pdf">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/8/87/PDF_file_icon.svg" height="22"/>
+    Rapport du projet
+  </a>
+</p>
+
+<p>
+  <a href="./presentation.pdf">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/8/87/PDF_file_icon.svg" height="22"/>
+    Présentation du projet
+  </a>
+</p>
 
 ## Structure du projet
 
