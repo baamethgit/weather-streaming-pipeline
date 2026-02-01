@@ -3,6 +3,10 @@
 
 Pipeline Big Data qui collecte des données météo depuis deux sources (API OpenWeather + capteur IoT simulé), les traite en temps réel avec Spark Streaming, génère des prédictions à 4h et les visualise dans un dashboard web interactif.
 
+## Architecture
+<img width="1100" height="530" alt="image" src="https://github.com/user-attachments/assets/f7721a51-334a-4508-bf65-b7b8c0de9ef8" />
+
+
 ## Technologies :
 
 <p align="left">
