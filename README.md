@@ -1,9 +1,15 @@
-# Données Météo en Temps Réel et Prédiction
+# Real-Time Weather Data Pipeline & Forecasting
 
 
 Pipeline Big Data qui collecte des données météo depuis deux sources (API OpenWeather + capteur IoT simulé), les traite en temps réel avec Spark Streaming, génère des prédictions à 4h et les visualise dans un dashboard web interactif.
 
-**Technologies :** Kafka, Spark Structured Streaming, PostgreSQL, Flask, Chart.js, Docker
+## Technologies :
+
+<p align="left">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/f/f3/Apache_Spark_logo.svg" height="48"/>
+  <img src="https://skillicons.dev/icons?i=kafka,postgres,python,flask,js,docker" />
+  <img src="https://www.chartjs.org/media/logo-title.svg" height="48"/>
+</p>
 
 
 ## Structure du projet
